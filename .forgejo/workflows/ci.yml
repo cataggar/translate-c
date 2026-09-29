@@ -67,6 +67,5 @@ jobs:
       - name: Run Cross-Translation Tests
         run: zig build test --maxrss ${{ env.ZSF_MAX_RSS }} -Doptimize=Debug -Dtest-cross-targets
 
-      # --build-file is broken in the CI
-      # - name: Run Examples
-      #   run: zig build all --maxrss ${{ env.ZSF_MAX_RSS }} --build-file examples/build.zig
+      - name: Run Examples
+        run: zig build all --maxrss ${{ env.ZSF_MAX_RSS }} --build-file examples/build.zig
