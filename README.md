@@ -3,16 +3,15 @@
 A Zig package for translating C code into Zig code, intended to replace
 `@cImport` and `zig translate-c`.
 
-**This is the main branch, which tracks master branch of Zig. Other branches
-track other versions of Zig.**
+This branch tracks Zig 0.17.x. Other branches track other versions of Zig.
 
 ## Usage
 
 Add `translate-c` to your `build.zig.zon` with this command:
 
 ```
-$ zig fetch --save git+https://codeberg.org/ziglang/translate-c
-info: resolved to commit 1aa9ec052415feeaa0494190ae35a94849a24399
+$ zig fetch --save git+https://codeberg.org/ziglang/translate-c#zig-0.17.x
+info: resolved to commit b84c307862df9ea200d1e05bf048b1e83b3d93e2
 ```
 
 Then, within your `build.zig`, write something like this:
