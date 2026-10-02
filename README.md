@@ -11,7 +11,7 @@ Add `translate-c` to your `build.zig.zon` with this command:
 
 ```
 $ zig fetch --save git+https://codeberg.org/ziglang/translate-c#zig-0.17.x
-info: resolved to commit b84c307862df9ea200d1e05bf048b1e83b3d93e2
+info: resolved to commit 0da7a16c3235b935b82421646076e0657cda21f6
 ```
 
 Then, within your `build.zig`, write something like this:
