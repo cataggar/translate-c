@@ -9,13 +9,18 @@ A GitHub source mirror of
   It currently targets Zig 0.18 development; it is not the Zig 0.17 release pin.
 - `zig-0.17.x` mirrors the upstream Zig 0.17 release branch and contains the
   translate-c 2.0.0 release commit.
+- `2.0.0` is a compatibility fork starting at the upstream 2.0.0 release commit,
+  with one patch changing the Aro dependency URL to the GitHub fork. Its Aro
+  commit and package hash remain unchanged.
 - `mirror` is the default, orphan branch containing only mirror automation and
   documentation.
 
-For Zig 0.17, translate-c 2.0.0 is pinned at
+The upstream Zig 0.17 translate-c 2.0.0 release is
 `0da7a16c3235b935b82421646076e0657cda21f6`. Its Aro dependency is preserved on
 [`cataggar/arocc`'s `zig17` branch](https://github.com/cataggar/arocc/tree/zig17).
-Source mirroring does not rewrite dependency URLs inside upstream commits.
+Use the `2.0.0` fork for a GitHub-only dependency chain, pinning its commit in
+consuming packages. Raw source mirroring does not rewrite dependency URLs inside
+upstream commits, and the sync workflow never changes the `2.0.0` fork branch.
 
 ## Synchronization
 
