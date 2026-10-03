@@ -1,4 +1,4 @@
-name: Sync main from Codeberg
+name: Sync source branches from Codeberg
 
 on:
   schedule:
@@ -23,15 +23,27 @@ jobs:
         with:
           ref: mirror
 
-      - name: Sync main
+      - name: Sync main and the Zig 0.17 release branch
         run: |
           set -euo pipefail
-          previous=$(git ls-remote --refs origin refs/heads/main | cut -f1)
-          previous=${previous:-0000000000000000000000000000000000000000}
+          previous_main=$(git ls-remote --refs origin refs/heads/main | cut -f1)
+          previous_main=${previous_main:-0000000000000000000000000000000000000000}
+          previous_zig17=$(git ls-remote --refs origin refs/heads/zig-0.17.x | cut -f1)
+          previous_zig17=${previous_zig17:-0000000000000000000000000000000000000000}
           git remote add upstream https://codeberg.org/ziglang/translate-c.git
           timeout --kill-after=30s 10m \
-            git -c protocol.version=0 fetch --no-tags upstream refs/heads/main
+            git -c protocol.version=0 fetch --no-tags upstream \
+              refs/heads/main:refs/remotes/upstream/main \
+              refs/heads/zig-0.17.x:refs/remotes/upstream/zig-0.17.x
+          git merge-base --is-ancestor \
+            0da7a16c3235b935b82421646076e0657cda21f6 \
+            refs/remotes/upstream/zig-0.17.x
           git push \
-            --force-with-lease="refs/heads/main:${previous}" \
-            origin FETCH_HEAD:refs/heads/main
-          git show --no-patch --format=fuller FETCH_HEAD
+            --atomic \
+            --force-with-lease="refs/heads/main:${previous_main}" \
+            --force-with-lease="refs/heads/zig-0.17.x:${previous_zig17}" \
+            origin \
+            refs/remotes/upstream/main:refs/heads/main \
+            refs/remotes/upstream/zig-0.17.x:refs/heads/zig-0.17.x
+          git show --no-patch --format=fuller \
+            refs/remotes/upstream/main refs/remotes/upstream/zig-0.17.x
