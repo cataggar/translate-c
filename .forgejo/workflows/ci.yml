@@ -25,6 +25,7 @@ jobs:
           - x86_64-freebsd
           - x86_64-linux
           - x86_64-netbsd
+          - x86_64-openbsd
           - x86_64-windows
 
     runs-on:
