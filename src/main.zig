@@ -56,15 +56,12 @@ pub fn main(init: process.Init) !void {
     });
     defer comp.deinit();
 
-    var driver: aro.Driver = .{ .comp = &comp, .diagnostics = &diagnostics, .aro_name = args[0] };
+    var driver: aro.Driver = .{ .comp = &comp, .diagnostics = &diagnostics };
     defer driver.deinit();
-
-    var toolchain: aro.Toolchain = .{ .driver = &driver };
-    defer toolchain.deinit();
 
     var stdout_buf: [512]u8 = undefined;
     var stdout = Io.File.stdout().writer(io, &stdout_buf);
-    translate(&driver, &toolchain, init.environ_map, &stdout.interface, args) catch |err| switch (err) {
+    translate(&driver, init.environ_map, &stdout.interface, args) catch |err| switch (err) {
         error.FatalError => process.exit(1),
         error.WriteFailed => return stdout.err.?,
         else => |e| return e,
@@ -101,7 +98,6 @@ pub const usage =
 
 fn translate(
     d: *aro.Driver,
-    tc: *aro.Toolchain,
     environ_map: *const process.Environ.Map,
     stdout: *Io.Writer,
     args: []const [:0]const u8,
@@ -407,13 +403,14 @@ fn translate(
         }
     }
 
+    var tc_opts: aro.Toolchain.Options = .{};
     const user_macros = macros: {
         var macro_buf: std.ArrayList(u8) = .empty;
         defer macro_buf.deinit(gpa);
 
         var discard_buf: [256]u8 = undefined;
         var discarding: Io.Writer.Discarding = .init(&discard_buf);
-        assert(!try d.parseArgs(&discarding.writer, &macro_buf, aro_args.items));
+        assert(!try d.parseArgs(&tc_opts, &discarding.writer, &macro_buf, aro_args.items));
         if (macro_buf.items.len > std.math.maxInt(u32)) {
             return d.fatal("user provided macro source exceeded max size", .{});
         }
@@ -429,11 +426,13 @@ fn translate(
     }
     const source = d.inputs.items[0];
 
-    tc.discover() catch |er| switch (er) {
+    var toolchain: aro.Toolchain = .{ .comp = d.comp, .opts = &tc_opts };
+    defer toolchain.deinit();
+    toolchain.discover() catch |er| switch (er) {
         error.OutOfMemory => return error.OutOfMemory,
         error.TooManyMultilibs => return d.fatal("found more than one multilib with the same priority", .{}),
     };
-    try tc.defineSystemIncludes();
+    try toolchain.defineSystemIncludes(&d.includes);
     try d.comp.initSearchPath(d.includes.items, d.verbose_search_path);
 
     const builtin_macros = d.comp.generateBuiltinMacros(d.system_defines) catch |err| switch (err) {

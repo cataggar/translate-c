@@ -54,7 +54,7 @@ pub const Options = struct {
     /// contains only preprocessor directives (e.g. `#define` and `#include`).
     c_source_file: Build.LazyPath,
     target: Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: ?std.builtin.OptimizeMode,
     link_libc: bool = true,
     /// Makes the translated module link to the provided system libraries, and
     /// includes any corresponding library headers during translation.
@@ -112,8 +112,8 @@ pub fn initInner(
         .link_libc = options.link_libc,
     });
 
-    if (options.optimize != .debug) {
-        run.addArg(b.fmt("-O={t}", .{options.optimize}));
+    if (options.optimize) |opt| {
+        run.addArg(b.fmt("-O={t}", .{opt}));
     }
 
     if (!options.target.query.isNative()) {

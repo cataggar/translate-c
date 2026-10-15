@@ -36,7 +36,7 @@ pub fn lowerCases(
     b: *std.Build,
     translator_conf: Translator.TranslateCConfig,
     target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: ?std.builtin.OptimizeMode,
     test_filters: []const []const u8,
     test_cross_targets: bool,
     test_translate_step: *std.Build.Step,
