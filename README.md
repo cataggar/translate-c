@@ -10,8 +10,8 @@ This branch tracks Zig 0.17.x. Other branches track other versions of Zig.
 Add `translate-c` to your `build.zig.zon` with this command:
 
 ```
-$ zig fetch --save git+https://codeberg.org/ziglang/translate-c#2.0.1
-info: resolved to commit 4f5ad374e50d1a98d3da79fa5d3bda9949103bf7
+$ zig fetch --save git+https://codeberg.org/ziglang/translate-c#2.0.2
+info: resolved to commit c11030012dc325d446474d17b78c242fd1d622ec
 ```
 
 Then, within your `build.zig`, write something like this:
