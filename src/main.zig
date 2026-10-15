@@ -59,12 +59,9 @@ pub fn main(init: process.Init) !void {
     var driver: aro.Driver = .{ .comp = &comp, .diagnostics = &diagnostics, .aro_name = args[0] };
     defer driver.deinit();
 
-    var toolchain: aro.Toolchain = .{ .driver = &driver };
-    defer toolchain.deinit();
-
     var stdout_buf: [512]u8 = undefined;
     var stdout = Io.File.stdout().writer(io, &stdout_buf);
-    translate(&driver, &toolchain, init.environ_map, &stdout.interface, args) catch |err| switch (err) {
+    translate(&driver, init.environ_map, &stdout.interface, args) catch |err| switch (err) {
         error.FatalError => process.exit(1),
         error.WriteFailed => return stdout.err.?,
         else => |e| return e,
@@ -101,7 +98,6 @@ pub const usage =
 
 fn translate(
     d: *aro.Driver,
-    tc: *aro.Toolchain,
     environ_map: *const process.Environ.Map,
     stdout: *Io.Writer,
     args: []const [:0]const u8,
@@ -327,9 +323,6 @@ fn translate(
         environ_map,
     ) catch |err| fatal("failed detecting libc: {t}", .{err});
 
-    // Supplement Aro builtin headers with Clang builtin headers
-    try aro_args.appendSlice(arena, &.{ "-idirafter", try Io.Dir.path.join(arena, &.{ zig_lib_path, "include" }) });
-
     try aro_args.ensureUnusedCapacity(arena, libc_dirs.libc_include_dir_list.len * 2);
     for (libc_dirs.libc_include_dir_list) |include_dir| {
         aro_args.appendAssumeCapacity("-isystem");
@@ -429,11 +422,17 @@ fn translate(
     }
     const source = d.inputs.items[0];
 
-    tc.discover() catch |er| switch (er) {
-        error.OutOfMemory => return error.OutOfMemory,
-        error.TooManyMultilibs => return d.fatal("found more than one multilib with the same priority", .{}),
-    };
-    try tc.defineSystemIncludes();
+    // Add Aro builtin headers as first system include
+    if (!d.nobuiltininc) {
+        var tc: aro.Toolchain = .{ .driver = d };
+
+        try tc.addBuiltinIncludeDir();
+        const aro_builtin_headers = d.includes.pop().?;
+        d.includes.insertAssumeCapacity(0, aro_builtin_headers);
+
+        // Supplement Aro builtin headers with Clang builtin headers
+        try tc.addSystemIncludeDirJoined(&.{ zig_lib_path, "include" });
+    }
     try d.comp.initSearchPath(d.includes.items, d.verbose_search_path);
 
     const builtin_macros = d.comp.generateBuiltinMacros(d.system_defines) catch |err| switch (err) {
