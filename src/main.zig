@@ -425,6 +425,11 @@ fn translate(
 
     if (!tc_opts.nobuiltininc) {
         var tc: aro.Toolchain = .{ .comp = d.comp, .opts = &tc_opts };
+        if (tc_opts.resource_dir == null) {
+            tc_opts.aro_name = std.process.executableDirPathAlloc(io, arena) catch {
+                return d.fatal("unable to find Aro executable path", .{});
+            };
+        }
 
         // Add Aro builtin headers as first system include
         try tc.addBuiltinIncludeDir(&d.includes);
