@@ -25,6 +25,7 @@ jobs:
           - x86_64-freebsd
           - x86_64-linux
           - x86_64-netbsd
+          - x86_64-openbsd
           - x86_64-windows
 
     runs-on:
@@ -52,6 +53,10 @@ jobs:
       - name: Build 32-bit NetBSD
         if: matrix.host == 'x86_64-netbsd'
         run: zig build --maxrss ${{ env.ZSF_MAX_RSS }} -Dtarget=arm-netbsd
+
+      - name: Build 32-bit OpenBSD
+        if: matrix.host == 'x86_64-openbsd'
+        run: zig build --maxrss ${{ env.ZSF_MAX_RSS }} -Dtarget=arm-openbsd
 
       - name: Run Tests
         run: |
