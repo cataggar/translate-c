@@ -10,13 +10,13 @@ void foo() {
 //     _ = &n;
 //     var ref: c_int = 1;
 //     _ = &ref;
-//     if ((blk: {
+//     if (blk: {
 //         const tmp = blk_1: {
 //             const ref_2 = &ref;
 //             ref_2.* += 1;
 //             break :blk_1 ref_2.*;
 //         };
 //         n = tmp;
-//         break :blk tmp;
-//     }) != 0) {}
+//         break :blk tmp != 0;
+//     }) {}
 // }

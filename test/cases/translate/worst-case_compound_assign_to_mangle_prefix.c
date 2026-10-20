@@ -10,9 +10,9 @@ void foo() {
 //     _ = &ref;
 //     var n: c_int = 1;
 //     _ = &n;
-//     if ((blk: {
+//     if (blk: {
 //         const ref_1 = &ref;
 //         ref_1.* += n;
-//         break :blk ref_1.*;
-//     }) != 0) {}
+//         break :blk ref_1.* != 0;
+//     }) {}
 // }

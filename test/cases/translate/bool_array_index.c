@@ -9,7 +9,7 @@ void foo() {
 // pub export fn foo() void {
 //     var a: [10]c_uint = undefined;
 //     _ = &a;
-//     var i: bool = @as(c_int, 0) != 0;
+//     var i: bool = false;
 //     _ = &i;
 //     a[@intFromBool(i)] = 0;
 // }

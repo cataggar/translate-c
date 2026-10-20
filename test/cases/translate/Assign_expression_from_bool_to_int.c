@@ -8,9 +8,9 @@ void foo(void) {
 // pub export fn foo() void {
 //     var a: c_int = undefined;
 //     _ = &a;
-//     if ((blk: {
-//         const tmp = @intFromBool(@as(c_int, 1) > @as(c_int, 0));
+//     if (blk: {
+//         const tmp = @as(c_int, @intFromBool(@as(c_int, 1) > @as(c_int, 0)));
 //         a = tmp;
-//         break :blk tmp;
-//     }) != 0) {}
+//         break :blk tmp != 0;
+//     }) {}
 // }

@@ -14,10 +14,10 @@ void foo() {
 //         var a: c_int = 2;
 //         _ = &a;
 //     }
-//     if ((blk: {
+//     if (blk: {
 //         _ = 2;
-//         break :blk 5;
-//     }) != 0) {
+//         break :blk true;
+//     }) {
 //         var a: c_int = 2;
 //         _ = &a;
 //     }

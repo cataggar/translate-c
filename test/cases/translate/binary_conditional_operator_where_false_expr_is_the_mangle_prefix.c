@@ -13,12 +13,12 @@ void foo() {
 //     _ = &n;
 //     var f: c_int = 1;
 //     _ = &f;
-//     if ((blk: {
+//     if (blk: {
 //         const tmp = blk_1: {
 //             const cond_temp_2 = f;
 //             break :blk_1 if (cond_temp_2 != 0) cond_temp_2 else cond_temp;
 //         };
 //         n = tmp;
-//         break :blk tmp;
-//     }) != 0) {}
+//         break :blk tmp != 0;
+//     }) {}
 // }

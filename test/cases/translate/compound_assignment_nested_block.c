@@ -14,14 +14,14 @@ int main(void) {
 //     _ = &a;
 //     var b: c_int = undefined;
 //     _ = &b;
-//     if ((blk: {
+//     if (blk: {
 //         const ref = &g;
 //         ref.* |= blk_1: {
 //             const tmp = a;
 //             b = tmp;
 //             break :blk_1 tmp;
 //         };
-//         break :blk ref.*;
-//     }) != 0) return 1;
+//         break :blk ref.* != 0;
+//     }) return 1;
 //     return 0;
 // }

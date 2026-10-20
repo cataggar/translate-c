@@ -11,7 +11,7 @@ void somefunc(void) {
 //     {
 //         y = 1;
 //         comptime {
-//             if (!(@as(c_int, 1) != 0)) @compileError("static assertion failed");
+//             if (!true) @compileError("static assertion failed");
 //         }
 //     }
 // }
