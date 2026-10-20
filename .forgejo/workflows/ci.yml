@@ -54,6 +54,10 @@ jobs:
         if: matrix.host == 'x86_64-netbsd'
         run: zig build --maxrss ${{ env.ZSF_MAX_RSS }} -Dtarget=arm-netbsd
 
+      - name: Build 32-bit OpenBSD
+        if: matrix.host == 'x86_64-openbsd'
+        run: zig build --maxrss ${{ env.ZSF_MAX_RSS }} -Dtarget=arm-openbsd
+
       - name: Run Tests
         run: |
           zig build test --maxrss ${{ env.ZSF_MAX_RSS }} -Doptimize=Debug
