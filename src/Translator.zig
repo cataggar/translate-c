@@ -2924,6 +2924,8 @@ fn transCommaExpr(t: *Translator, scope: *Scope, bin: Node.Binary, used: ResultU
 }
 
 fn transAssignExpr(t: *Translator, scope: *Scope, bin: Node.Binary, used: ResultUsed) !ZigNode {
+    if (try t.transVectorIndexAssign(scope, bin, used, .standard)) |node| return node;
+
     if (used == .unused) {
         const lhs = try t.transExpr(scope, bin.lhs, .usedAs(t, bin.qt));
         const rhs = try t.transExpr(scope, bin.rhs, .coercedTo(t, bin.qt));
@@ -2964,6 +2966,8 @@ fn transCompoundAssign(
     assign: Node.Binary,
     used: ResultUsed,
 ) !ZigNode {
+    if (try t.transVectorIndexAssign(scope, assign, used, .compound)) |node| return node;
+
     // If the result is unused we can try using the equivalent Zig operator
     // without a block
     if (used == .unused) {
@@ -3061,6 +3065,97 @@ fn transCompoundAssignSimple(t: *Translator, scope: *Scope, lhs_dummy_opt: ?ZigN
         .usize => try t.usizeCastForWrappingPtrArithmetic(try t.transExpr(scope, bin.rhs, .usedAs(t, bin.qt))),
     };
     return try t.createBinOpNode(op, lhs_node, casted_rhs);
+}
+
+fn transVectorIndexAssign(
+    t: *Translator,
+    scope: *Scope,
+    bin: Node.Binary,
+    used: ResultUsed,
+    kind: enum { standard, compound },
+) TransError!?ZigNode {
+    const vector_access = loop: switch (bin.lhs.get(t.tree)) {
+        .paren_expr => |paren_expr| {
+            continue :loop paren_expr.operand.get(t.tree);
+        },
+        .array_access_expr => |array_access| {
+            const vec_base = array_access.base.qt(t.tree).is(t.comp, .vector);
+            if (!vec_base) return null;
+            if (t.tree.value_map.contains(array_access.index)) return null;
+            break :loop array_access;
+        },
+        else => return null,
+    };
+
+    // Simple vec[i] = val; => vectorIndexStore(&vec, i, val);
+    if (kind == .standard and used == .unused) {
+        const base_node = try t.transExpr(scope, vector_access.base, .used_non_bool);
+        const base_ref = try ZigTag.address_of.create(t.arena, base_node);
+        const index = try t.transExpr(scope, vector_access.index, .coerced_non_bool);
+        const value = try t.transExpr(scope, bin.rhs, .coerced_non_bool);
+        return try t.createHelperCallNode(.vectorIndexStore, &.{ base_ref, index, value });
+    }
+
+    // Value used or compound assign, either way needs a block.
+    var block_scope = try Scope.Block.init(t, scope, used != .unused);
+    defer block_scope.deinit();
+
+    // const tmp_base = &<vector_access.base>;
+    const tmp_base = try block_scope.reserveMangledName("tmp_base");
+    try block_scope.statements.append(
+        t.gpa,
+        try ZigTag.var_simple.create(t.arena, .{
+            .name = tmp_base,
+            .init = try ZigTag.address_of.create(
+                t.arena,
+                try t.transExpr(scope, vector_access.base, .used_non_bool),
+            ),
+        }),
+    );
+    const tmp_base_node = try ZigTag.identifier.create(t.arena, tmp_base);
+
+    // const tmp_index = <vector_access.index>;
+    const tmp_index = try block_scope.reserveMangledName("tmp_index");
+    try block_scope.statements.append(
+        t.gpa,
+        try ZigTag.var_simple.create(t.arena, .{
+            .name = tmp_index,
+            .init = try t.transExpr(scope, vector_access.index, .used_non_bool),
+        }),
+    );
+    const tmp_index_node = try ZigTag.identifier.create(t.arena, tmp_index);
+
+    // const new = (vectorIndexLoad(tmp_base.*, tmp_index) <operator>) rhs;
+    const new = try block_scope.reserveMangledName("new");
+    try block_scope.statements.append(
+        t.gpa,
+        try ZigTag.var_simple.create(t.arena, .{
+            .name = new,
+            .init = if (kind == .standard)
+                try t.transExpr(&block_scope.base, bin.rhs, .used_non_bool)
+            else expr: {
+                const old_dummy = t.compound_assign_dummy;
+                defer t.compound_assign_dummy = old_dummy;
+
+                const base_deref = try ZigTag.deref.create(t.arena, tmp_base_node);
+                t.compound_assign_dummy = try t.createHelperCallNode(.vectorIndexLoad, &.{ base_deref, tmp_index_node });
+
+                break :expr try t.transExpr(&block_scope.base, bin.rhs, .coerced_non_bool);
+            },
+        }),
+    );
+    const new_node = try ZigTag.identifier.create(t.arena, new);
+
+    try block_scope.statements.append(t.gpa, try t.createHelperCallNode(.vectorIndexStore, &.{ tmp_base_node, tmp_index_node, new_node }));
+
+    if (used != .unused) {
+        const break_node = try ZigTag.break_val.create(t.arena, .{
+            .label = block_scope.label,
+            .val = new_node,
+        });
+        try block_scope.statements.append(t.gpa, break_node);
+    }
+    return try block_scope.complete();
 }
 
 fn transIncDecExpr(
@@ -3244,9 +3339,16 @@ fn transArrayAccess(t: *Translator, scope: *Scope, array_access: Node.ArrayAcces
         break :base base.cast.operand;
     };
 
+    const vec_base = base.qt(t.tree).is(t.comp, .vector);
+
     const base_node = opt_base orelse try t.transExpr(scope, base, .used_non_bool);
     const index = index: {
         const index = try t.transExpr(scope, array_access.index, .coerced_non_bool);
+        if (vec_base and !t.tree.value_map.contains(array_access.index)) {
+            // Runtime vector index
+            return t.createHelperCallNode(.vectorIndexLoad, &.{ base_node, index });
+        }
+
         const index_qt = array_access.index.qt(t.tree);
         const maybe_bigger_than_usize = type: switch (index_qt.base(t.comp).type) {
             .bool => {

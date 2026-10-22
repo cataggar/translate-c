@@ -135,6 +135,26 @@ test shuffleVectorIndex {
     try testing.expect(shuffleVectorIndex(7, vector_len) == -4);
 }
 
+const vectorIndexLoad = helpers.vectorIndexLoad;
+
+test vectorIndexLoad {
+    var a: @Vector(4, u8) = .{ 1, 2, 3, 4 };
+    var b: usize = 2;
+    var c = vectorIndexLoad(a, b);
+    std.mem.doNotOptimizeAway(.{ &a, &b, &c });
+    try testing.expect(c == 3);
+}
+
+const vectorIndexStore = helpers.vectorIndexStore;
+
+test vectorIndexStore {
+    var a: @Vector(4, u8) = .{ 1, 2, 3, 4 };
+    var b: usize = 2;
+    std.mem.doNotOptimizeAway(.{ &a, &b });
+    vectorIndexStore(&a, b, 99);
+    try testing.expect(a[2] == 99);
+}
+
 const FlexibleArrayType = helpers.FlexibleArrayType;
 
 test FlexibleArrayType {

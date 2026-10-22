@@ -20,4 +20,3 @@ int main(int argc, char**argv) {
 }
 
 // run
-// skip_vector_index=true

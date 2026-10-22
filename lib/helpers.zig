@@ -143,6 +143,20 @@ pub fn shuffleVectorIndex(comptime this_index: c_int, comptime source_vector_len
     return ~@as(i32, @intCast(b_index));
 }
 
+pub inline fn vectorIndexLoad(v: anytype, i: anytype) @TypeOf(v[0]) {
+    const info = @typeInfo(@TypeOf(v)).vector;
+    const a: [info.len]info.child = @bitCast(v);
+    return a[cast(usize, i)];
+}
+
+pub inline fn vectorIndexStore(v_ptr: anytype, i: anytype, val: @TypeOf(v_ptr.*[0])) void {
+    const v = v_ptr.*;
+    const info = @typeInfo(@TypeOf(v)).vector;
+    var a: [info.len]info.child = @bitCast(v);
+    a[cast(usize, i)] = val;
+    v_ptr.* = @bitCast(a);
+}
+
 /// C `%` operator for signed integers
 /// C standard states: "If the quotient a/b is representable, the expression (a/b)*b + a%b shall equal a"
 /// The quotient is not representable if denominator is zero, or if numerator is the minimum integer for
