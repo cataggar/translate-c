@@ -7,7 +7,7 @@ void foo(void) {
 
 // translate
 //
-// pub const yes = [*c]u8;
+// pub const yes = [*c]c_char;
 // pub export fn foo() void {
 //     var a: yes = undefined;
 //     _ = &a;

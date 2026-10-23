@@ -74,6 +74,8 @@ pub const Options = struct {
     /// Control when to treat a trailing array as a flexible array member (default: 2).
     /// 0: any trailing array, 1: size [0]/[1]/[], 2: size [0]/[] (default), 3: [] only.
     strict_flex_arrays: ?enum { @"0", @"1", @"2", @"3" } = null,
+    /// Override `char` signedness both in the C frontend and in translate-c.
+    char_signedness: ?std.builtin.Signedness = null,
     libc_file: ?std.Build.LazyPath = null,
     /// Extra arguments passed to Aro
     extra_args: []const []const u8 = &.{},
@@ -155,6 +157,10 @@ pub fn initInner(
     }
 
     run.addArg("--");
+    if (options.char_signedness) |signedness| {
+        addFlag(run, "unsigned-char", signedness == .unsigned);
+    }
+
     run.addArgs(options.extra_args);
 
     run.addFileArg(options.c_source_file);

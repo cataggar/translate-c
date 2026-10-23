@@ -1,5 +1,5 @@
 void foo(void) {
-    static const char v2[] = "2.2.2";
+    static const unsigned char v2[] = "2.2.2";
 }
 
 // translate

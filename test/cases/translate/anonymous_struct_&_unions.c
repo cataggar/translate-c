@@ -13,7 +13,7 @@ void foo(outer *x) { x->y = x->x; }
 //     y: c_int = 0,
 // };
 // const union_unnamed_1 = extern union {
-//     x: u8,
+//     x: c_char,
 //     unnamed_0: struct_unnamed_2,
 // };
 // pub const outer = extern struct {

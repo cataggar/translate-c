@@ -17,7 +17,7 @@ void test(void) {
 //
 // pub const struct_A = extern struct {
 //     x: c_int,
-//     _data: [0]u8,
+//     _data: [0]c_char,
 //     pub fn data(_self: anytype) __helpers.FlexibleArrayType(@TypeOf(_self), @typeInfo(@TypeOf(_self.*._data)).array.child) {
 //         return @ptrCast(@alignCast(&_self.*._data));
 //     }
@@ -25,7 +25,7 @@ void test(void) {
 //
 // pub const struct_B = extern struct {
 //     x: c_int,
-//     _data: [0]u8,
+//     _data: [0]c_char,
 //     pub fn data(_self: anytype) __helpers.FlexibleArrayType(@TypeOf(_self), @typeInfo(@TypeOf(_self.*._data)).array.child) {
 //         return @ptrCast(@alignCast(&_self.*._data));
 //     }
@@ -33,12 +33,12 @@ void test(void) {
 //
 // pub const struct_C = extern struct {
 //     x: c_int,
-//     data: [1]u8,
+//     data: [1]c_char,
 // };
 //
 // pub const struct_D = extern struct {
 //     x: c_int,
-//     data: [2]u8,
+//     data: [2]c_char,
 // };
 //
 // pub export fn @"test"() void {

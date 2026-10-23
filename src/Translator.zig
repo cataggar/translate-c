@@ -463,6 +463,18 @@ fn isSelfDefinedMacro(t: *Translator, name: []const u8, macro: aro.Preprocessor.
     return std.mem.eql(u8, name, slice);
 }
 
+fn unparenNode(t: *const Translator, node: Node.Index, comptime target: std.meta.Tag(Node)) ?struct { @FieldType(Node, @tagName(target)), Node.Index } {
+    var cur = node;
+    while (true) switch (cur.get(t.tree)) {
+        .paren_expr => |paren_expr| cur = paren_expr.operand,
+        .generic_expr => |generic| cur = generic.chosen,
+        .generic_association_expr => |generic| cur = generic.expr,
+        .generic_default_expr => |generic| cur = generic.expr,
+        target => |payload| return .{ payload, cur },
+        else => return null,
+    };
+}
+
 // =======================
 // Declaration translation
 // =======================
@@ -1221,8 +1233,10 @@ fn transType(t: *Translator, scope: *Scope, qt: QualType, source_loc: TokenIndex
         .void => return .anyopaque,
         .bool => return .bool,
         .int => |int_ty| switch (int_ty) {
-            //.char => return .c_char, // TODO: this is the preferred translation
-            .char => return .u8,
+            .char => return if (t.comp.langopts.char_signedness_override) |sign| switch (sign) {
+                .unsigned => .u8,
+                .signed => .i8,
+            } else .char,
             .schar => return .i8,
             .uchar => return .u8,
             .short => return .short,
@@ -1670,7 +1684,7 @@ fn signedness(t: *Translator, qt: QualType) ?std.builtin.Signedness {
         .bool => .unsigned,
         .bit_int => |bit_int| bit_int.signedness,
         .int => |int_ty| switch (int_ty) {
-            .char => .unsigned, // Always translated as u8
+            .char => t.comp.getCharSignedness(),
             .schar, .short, .int, .long, .long_long, .int128, .int24 => .signed,
             .uchar, .ushort, .uint, .ulong, .ulong_long, .uint128, .uint24 => .unsigned,
         },
@@ -2400,7 +2414,7 @@ fn transExpr(t: *Translator, scope: *Scope, expr: Node.Index, used: ResultUsed) 
         .int_literal => return t.transIntLiteral(scope, expr, used),
         .char_literal => return t.transCharLiteral(scope, expr, used),
         .float_literal => return t.transFloatLiteral(scope, expr, used),
-        .string_literal_expr => |literal| try t.transStringLiteral(scope, expr, literal),
+        .string_literal_expr => |literal| return t.transStringLiteral(scope, expr, literal, used),
         .bool_literal => res: {
             const val = t.tree.value_map.get(expr).?;
             break :res if (val.toBool(t.comp))
@@ -2533,36 +2547,26 @@ fn transCastExpr(
         .array_to_pointer => array_to_pointer: {
             const child_qt = dest_qt.childType(t.comp);
 
-            loop: switch (cast.operand.get(t.tree)) {
-                .string_literal_expr => |literal| {
-                    if (used.isBoolRes().?) {
-                        // @intFromPtr("foo") != 0, always true
-                        const str = try t.transStringLiteral(scope, cast.operand, literal);
-                        const int_from_ptr = try ZigTag.int_from_ptr.create(t.arena, str);
-                        return ZigTag.not_equal.create(t.arena, .{ .lhs = int_from_ptr, .rhs = .zero_literal });
-                    }
-                    const sub_expr_node = try t.transExpr(scope, cast.operand, .usedAs(t, dest_qt));
+            if (t.unparenNode(cast.operand, .string_literal_expr)) |pair| {
+                const literal, const index = pair;
+                if (used.isBoolRes().?) {
+                    // @intFromPtr("foo") != 0, always true
+                    const str = switch (literal.kind) {
+                        .ascii, .utf8 => try t.transNarrowStringLiteral(index, literal, .u8, .used_non_bool),
+                        .utf16, .utf32, .wide => try t.transStringLiteral(scope, index, literal, .used_non_bool),
+                    };
 
-                    const casted = if (child_qt.@"const")
-                        sub_expr_node
-                    else
-                        try ZigTag.const_cast.create(t.arena, sub_expr_node);
+                    const int_from_ptr = try ZigTag.int_from_ptr.create(t.arena, str);
+                    return ZigTag.not_equal.create(t.arena, .{ .lhs = int_from_ptr, .rhs = .zero_literal });
+                }
+                const sub_expr_node = try t.transExpr(scope, cast.operand, .usedAs(t, dest_qt));
 
-                    return t.finishExpr(dest_qt, used, casted);
-                },
-                .paren_expr => |paren_expr| {
-                    continue :loop paren_expr.operand.get(t.tree);
-                },
-                .generic_expr => |generic| {
-                    continue :loop generic.chosen.get(t.tree);
-                },
-                .generic_association_expr => |generic| {
-                    continue :loop generic.expr.get(t.tree);
-                },
-                .generic_default_expr => |generic| {
-                    continue :loop generic.expr.get(t.tree);
-                },
-                else => {},
+                const casted = if (child_qt.@"const")
+                    sub_expr_node
+                else
+                    try ZigTag.const_cast.create(t.arena, sub_expr_node);
+
+                return t.finishExpr(dest_qt, used, casted);
             }
 
             // Flexible array members are translated as member functions returning
@@ -2634,14 +2638,45 @@ fn transCastExpr(
             break :pointer_to_int try ZigTag.int_cast.create(t.arena, ptr_node);
         },
         .bitcast => bitcast: {
+            // Check for '(unsigned char*)"foo"'
+            str: {
+                const operand_node = cast.operand.get(t.tree);
+                if (operand_node != .cast) break :str;
+                if (operand_node.cast.kind != .array_to_pointer) break :str;
+                const str_node = operand_node.cast.operand;
+                const literal = switch (str_node.get(t.tree)) {
+                    .string_literal_expr => |literal| literal,
+                    else => break :str,
+                };
+                const dest_ptr = dest_qt.get(t.comp, .pointer).?;
+                const int_child = dest_ptr.child.get(t.comp, .int) orelse break :str;
+                switch (int_child) {
+                    .char, .schar, .uchar => {},
+                    else => break :str,
+                }
+
+                const str = switch (literal.kind) {
+                    .ascii, .utf8 => try t.transNarrowStringLiteral(
+                        str_node,
+                        literal,
+                        try t.transType(scope, dest_ptr.child, cast.l_paren),
+                        .used_non_bool,
+                    ),
+                    .utf16, .utf32, .wide => break :str,
+                };
+
+                if (dest_ptr.child.@"const") break :bitcast str;
+                break :bitcast try ZigTag.const_cast.create(t.arena, str);
+            }
+
             const sub_expr_node = try t.transPointerCastExpr(scope, cast.operand);
             const operand_qt = cast.operand.qt(t.tree);
-            if (dest_qt.isPointer(t.comp) and operand_qt.isPointer(t.comp)) {
+            if (dest_qt.get(t.comp, .pointer)) |dest_ptr| if (operand_qt.get(t.comp, .pointer)) |src_pointer| {
                 var casted = try ZigTag.align_cast.create(t.arena, sub_expr_node);
                 casted = try ZigTag.ptr_cast.create(t.arena, casted);
 
-                const src_elem = operand_qt.childType(t.comp);
-                const dest_elem = dest_qt.childType(t.comp);
+                const src_elem = src_pointer.child;
+                const dest_elem = dest_ptr.child;
                 if ((src_elem.@"const" or src_elem.is(t.comp, .func)) and !dest_elem.@"const") {
                     casted = try ZigTag.const_cast.create(t.arena, casted);
                 }
@@ -2649,7 +2684,7 @@ fn transCastExpr(
                     casted = try ZigTag.volatile_cast.create(t.arena, casted);
                 }
                 break :bitcast casted;
-            }
+            };
 
             break :bitcast try ZigTag.bit_cast.create(t.arena, sub_expr_node);
         },
@@ -3066,18 +3101,13 @@ fn transVectorIndexAssign(
     used: ResultUsed,
     kind: enum { standard, compound },
 ) TransError!?ZigNode {
-    const vector_access = loop: switch (bin.lhs.get(t.tree)) {
-        .paren_expr => |paren_expr| {
-            continue :loop paren_expr.operand.get(t.tree);
-        },
-        .array_access_expr => |array_access| {
-            const vec_base = array_access.base.qt(t.tree).is(t.comp, .vector);
-            if (!vec_base) return null;
-            if (t.tree.value_map.contains(array_access.index)) return null;
-            break :loop array_access;
-        },
-        else => return null,
-    };
+    const vector_access = if (t.unparenNode(bin.lhs, .array_access_expr)) |pair| access: {
+        const array_access, _ = pair;
+        const vec_base = array_access.base.qt(t.tree).is(t.comp, .vector);
+        if (!vec_base) return null;
+        if (t.tree.value_map.contains(array_access.index)) return null;
+        break :access array_access;
+    } else return null;
 
     // Simple vec[i] = val; => vectorIndexStore(&vec, i, val);
     if (kind == .standard and used == .unused) {
@@ -3681,13 +3711,16 @@ fn transStringLiteral(
     scope: *Scope,
     expr: Node.Index,
     literal: Node.CharLiteral,
+    used: ResultUsed,
 ) TransError!ZigNode {
     switch (literal.kind) {
-        .ascii, .utf8 => return t.transNarrowStringLiteral(expr, literal),
+        .ascii => return t.transNarrowStringLiteral(expr, literal, .char, used),
+        .utf8 => return t.transNarrowStringLiteral(expr, literal, .u8, used),
         .utf16, .utf32, .wide => {
             const array_type = try t.transTypeInit(scope, literal.qt, expr, literal.literal_tok);
             const lit_array = try t.transStringLiteralInitializer(expr, literal, array_type);
-            return ZigTag.address_of.create(t.arena, lit_array);
+            const ref = try ZigTag.address_of.create(t.arena, lit_array);
+            return t.finishExpr(literal.qt, used, ref);
         },
     }
 }
@@ -3696,6 +3729,8 @@ fn transNarrowStringLiteral(
     t: *Translator,
     expr: Node.Index,
     literal: Node.CharLiteral,
+    elem_type: ZigNode,
+    used: ResultUsed,
 ) TransError!ZigNode {
     const val = t.tree.value_map.get(expr).?;
 
@@ -3705,7 +3740,23 @@ fn transNarrowStringLiteral(
 
     aro.Value.printString(bytes, literal.qt, t.comp, &allocating.writer, .quoted) catch return error.OutOfMemory;
 
-    return ZigTag.string_literal.create(t.arena, try t.arena.dupe(u8, allocating.written()));
+    const str_node = try ZigTag.string_literal.create(t.arena, try t.arena.dupe(u8, allocating.written()));
+    if (elem_type.tag() == .u8_type or used == .unused) return t.finishExpr(literal.qt, used, str_node);
+
+    const ptr_type = try ZigTag.single_pointer.create(t.arena, .{
+        .elem_type = try ZigTag.null_sentinel_array_type.create(t.arena, .{
+            .elem_type = elem_type,
+            // The length of the string literal excluding the sentinel.
+            .len = literal.qt.arrayLen(t.comp).? - 1,
+        }),
+        .is_const = true,
+        .is_volatile = false,
+        .is_allowzero = false,
+    });
+    return t.finishExpr(literal.qt, used, try ZigTag.as.create(t.arena, .{
+        .lhs = ptr_type,
+        .rhs = try ZigTag.ptr_cast.create(t.arena, str_node),
+    }));
 }
 
 /// Translate a string literal that is initializing an array. In general narrow string
@@ -3742,7 +3793,7 @@ fn transStringLiteralInitializer(
 
     const init_node = if (is_narrow) blk: {
         // "string literal".* or string literal"[0..num_inits].*
-        var str = try t.transNarrowStringLiteral(expr, literal);
+        var str = try t.transNarrowStringLiteral(expr, literal, elem_type, .used_non_bool);
         if (str_length != array_size) str = try ZigTag.string_slice.create(t.arena, .{ .string = str, .end = num_inits });
         break :blk try ZigTag.deref.create(t.arena, str);
     } else blk: {
@@ -3994,11 +4045,16 @@ fn transTypeInfo(
 ) TransError!ZigNode {
     const operand = operand: {
         if (typeinfo.expr) |expr| {
-            const operand = try t.transExpr(scope, expr, .usedAs(t, typeinfo.qt));
-            if (operand.tag() == .string_literal) {
-                const deref = try ZigTag.deref.create(t.arena, operand);
+            if (t.unparenNode(expr, .string_literal_expr)) |pair| {
+                const literal, const index = pair;
+                const str = switch (literal.kind) {
+                    .ascii, .utf8 => try t.transNarrowStringLiteral(index, literal, .u8, .used_non_bool),
+                    .utf16, .utf32, .wide => try t.transStringLiteral(scope, index, literal, .used_non_bool),
+                };
+                const deref = try ZigTag.deref.create(t.arena, str);
                 break :operand try ZigTag.typeof.create(t.arena, deref);
             }
+            const operand = try t.transExpr(scope, expr, .usedAs(t, typeinfo.qt));
             break :operand try ZigTag.typeof.create(t.arena, operand);
         }
 

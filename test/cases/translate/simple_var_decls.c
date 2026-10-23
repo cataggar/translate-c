@@ -16,7 +16,7 @@ void foo(void) {
 // pub export fn foo() void {
 //     var a: c_int = undefined;
 //     _ = &a;
-//     var b: u8 = 123;
+//     var b: c_char = 123;
 //     _ = &b;
 //     const c: c_int = undefined;
 //     _ = &c;

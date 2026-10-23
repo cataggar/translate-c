@@ -6,6 +6,6 @@ void baz(int8_t a, int16_t b, int32_t c, int64_t d);
 
 // translate
 //
-// pub extern fn foo(a: u8, b: u8, c: i8) c_int;
+// pub extern fn foo(a: c_char, b: u8, c: i8) c_int;
 // pub extern fn bar(a: u8, b: u16, c: u32, d: u64) void;
 // pub extern fn baz(a: i8, b: i16, c: i32, d: i64) void;

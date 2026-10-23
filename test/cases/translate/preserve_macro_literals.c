@@ -16,7 +16,7 @@ int func(void) {
 //     _ = &a;
 //     var b: f64 = bar;
 //     _ = &b;
-//     var c: u8 = baz;
+//     var c: c_char = baz;
 //     _ = &c;
 //     return 1;
 // }

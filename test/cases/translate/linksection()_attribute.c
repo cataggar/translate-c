@@ -7,5 +7,5 @@ void my_fn(void) { }
 
 // translate
 //
-// pub extern var my_array: [16]u8 linksection("NEAR,.data");
+// pub extern var my_array: [16]c_char linksection("NEAR,.data");
 // pub export fn my_fn() linksection("NEAR,.data") void {}

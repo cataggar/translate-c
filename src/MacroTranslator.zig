@@ -1064,8 +1064,14 @@ fn parseCNumericType(mt: *MacroTranslator) ParseError!ZigNode {
     if (kw.eql(.{ .signed = 1, .char = 1 }))
         return .i8;
 
-    if (kw.eql(.{ .char = 1 }) or kw.eql(.{ .unsigned = 1, .char = 1 }))
+    if (kw.eql(.{ .unsigned = 1, .char = 1 }))
         return .u8;
+
+    if (kw.eql(.{ .char = 1 }))
+        return if (mt.t.comp.langopts.char_signedness_override) |sign| switch (sign) {
+            .unsigned => .u8,
+            .signed => .i8,
+        } else .char;
 
     if (kw.eql(.{ .short = 1 }) or kw.eql(.{ .signed = 1, .short = 1 }) or kw.eql(.{ .short = 1, .int = 1 }) or kw.eql(.{ .signed = 1, .short = 1, .int = 1 }))
         return .short;

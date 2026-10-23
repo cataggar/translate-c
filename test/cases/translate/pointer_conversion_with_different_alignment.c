@@ -20,7 +20,7 @@ void test_ptr_cast() {
 //     var p: ?*anyopaque = undefined;
 //     _ = &p;
 //     {
-//         var to_char: [*c]u8 = @ptrCast(@alignCast(p));
+//         var to_char: [*c]c_char = @ptrCast(@alignCast(p));
 //         _ = &to_char;
 //         var to_short: [*c]c_short = @ptrCast(@alignCast(p));
 //         _ = &to_short;
@@ -30,7 +30,7 @@ void test_ptr_cast() {
 //         _ = &to_longlong;
 //     }
 //     {
-//         var to_char: [*c]u8 = @ptrCast(@alignCast(p));
+//         var to_char: [*c]c_char = @ptrCast(@alignCast(p));
 //         _ = &to_char;
 //         var to_short: [*c]c_short = @ptrCast(@alignCast(p));
 //         _ = &to_short;

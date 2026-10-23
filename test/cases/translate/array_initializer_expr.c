@@ -1,6 +1,6 @@
 static void foo(void){
-    char arr[10] ={1};
-    char *arr1[10] ={0};
+    unsigned char arr[10] ={1};
+    unsigned char *arr1[10] ={0};
     int arr2[5] = {0, [1] = 1, [3] = 3, 4};
     int arr3[6] = {0, [0] = 10, [2] = 2, [0] = 100, 4, 5};
     int arr4[7] = {[1] = 1, [2] = 2, [5] = 5};
@@ -8,12 +8,12 @@ static void foo(void){
     int arr6[9] = {};
 }
 struct S {
-    char label[8];
+    unsigned char label[8];
 } s = { .label = "start" };
 union U {
-    char label[8];
+    unsigned char label[8];
 } u = { .label = "start" };
-char a[2][8] = {"start"};
+unsigned char a[2][8] = {"start"};
 
 // translate
 //

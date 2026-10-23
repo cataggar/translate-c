@@ -19,7 +19,7 @@ int strlen(char const *);
 //     d: struct_d_1,
 // };
 // pub const stype = struct_stype;
-// pub extern fn strlen([*c]const u8) c_int;
+// pub extern fn strlen([*c]const c_char) c_int;
 // 
 // pub inline fn MAC(d: anytype) @TypeOf(strlen(d)) {
 //     _ = &d;

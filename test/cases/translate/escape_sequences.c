@@ -1,5 +1,5 @@
-const char *escapes() {
-char a = '\'',
+const unsigned char *escapes() {
+    unsigned char a = '\'',
     b = '\\',
     c = '\a',
     d = '\b',

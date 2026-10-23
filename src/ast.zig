@@ -23,6 +23,7 @@ pub const Node = extern union {
     pub const @"anytype": Node = .initSmall(.@"anytype");
     pub const @"continue": Node = .initSmall(.@"continue");
     pub const @"break": Node = .initSmall(.@"break");
+    pub const @"u8": Node = .initSmall(.u8_type);
 
     fn initSmall(comptime t: Tag) Node {
         comptime std.debug.assert(@backingInt(t) < Tag.no_payload_count);
@@ -44,7 +45,6 @@ pub const Node = extern union {
     pub const ulonglong: Node = staticType("c_ulonglong");
 
     pub const @"i8": Node = staticType("i8");
-    pub const @"u8": Node = staticType("u8");
     pub const @"i16": Node = staticType("i16");
     pub const @"u16": Node = staticType("u16");
     pub const @"i24": Node = staticType("i24");
@@ -90,6 +90,7 @@ pub const Node = extern union {
         zero_literal,
         one_literal,
         @"unreachable",
+        u8_type,
         @"anytype",
         @"continue",
         @"break",
@@ -330,6 +331,7 @@ pub const Node = extern union {
                 .return_void,
                 .zero_literal,
                 .one_literal,
+                .u8_type,
                 .@"anytype",
                 .@"continue",
                 .@"break",
@@ -1120,6 +1122,11 @@ fn renderNode(c: *Context, node: Node) Allocator.Error!NodeIndex {
         .@"unreachable" => return c.addNode(.{
             .tag = .unreachable_literal,
             .main_token = try c.addToken(.keyword_unreachable, "unreachable"),
+            .data = undefined,
+        }),
+        .u8_type => return c.addNode(.{
+            .tag = .identifier,
+            .main_token = try c.addToken(.identifier, "u8"),
             .data = undefined,
         }),
         .@"continue" => return c.addNode(.{
@@ -2516,6 +2523,7 @@ fn renderNodeGrouped(c: *Context, node: Node) !NodeIndex {
         .return_void,
         .zero_literal,
         .one_literal,
+        .u8_type,
         .@"anytype",
         .div_trunc,
         .int_cast,

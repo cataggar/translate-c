@@ -1,6 +1,6 @@
-extern char arr0[] = "hello";
-static char arr1[] = "hello";
-char arr2[] = "hello";
+extern unsigned char arr0[] = "hello";
+static unsigned char arr1[] = "hello";
+unsigned char arr2[] = "hello";
 
 // translate
 //

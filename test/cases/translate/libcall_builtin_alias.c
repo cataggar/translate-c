@@ -9,7 +9,7 @@ extern int printf(const char *restrict, ...);
 
 // translate
 //
-// pub extern fn printf(noalias [*c]const u8, ...) c_int;
+// pub extern fn printf(noalias [*c]const c_char, ...) c_int;
 //
 // pub inline fn PRINT_INT(a: anytype) @TypeOf(printf("%d\n", a)) {
 //     _ = &a;

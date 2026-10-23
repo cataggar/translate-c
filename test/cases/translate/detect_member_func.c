@@ -53,7 +53,7 @@ void point_set_pos(point *p, int x, int y);
 //
 // pub const Foo = extern struct {
 //     foo: c_int = 0,
-//     bar: [*c]u8 = null,
+//     bar: [*c]c_char = null,
 //     pub const Foo_bar = __root.Foo_bar;
 //     pub const baz = __root.baz;
 //     pub const libsomething_quux = __root.libsomething_quux;
