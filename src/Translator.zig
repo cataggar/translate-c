@@ -2546,13 +2546,8 @@ fn transCastExpr(
                     }
                     const sub_expr_node = try t.transExpr(scope, cast.operand, .usedAs(t, dest_qt));
 
-                    const ref = if (literal.kind == .utf8 or literal.kind == .ascii)
-                        sub_expr_node
-                    else
-                        try ZigTag.address_of.create(t.arena, sub_expr_node);
-
                     const casted = if (child_qt.@"const")
-                        ref
+                        sub_expr_node
                     else
                         try ZigTag.const_cast.create(t.arena, sub_expr_node);
 
@@ -3694,13 +3689,9 @@ fn transStringLiteral(
     switch (literal.kind) {
         .ascii, .utf8 => return t.transNarrowStringLiteral(expr, literal),
         .utf16, .utf32, .wide => {
-            const name = try std.fmt.allocPrint(t.arena, "{s}_string_{d}", .{ @tagName(literal.kind), t.getMangle() });
-
             const array_type = try t.transTypeInit(scope, literal.qt, expr, literal.literal_tok);
             const lit_array = try t.transStringLiteralInitializer(expr, literal, array_type);
-            const decl = try ZigTag.var_simple.create(t.arena, .{ .name = name, .init = lit_array });
-            try scope.appendNode(decl);
-            return ZigTag.identifier.create(t.arena, name);
+            return ZigTag.address_of.create(t.arena, lit_array);
         },
     }
 }
