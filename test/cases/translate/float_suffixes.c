@@ -32,4 +32,4 @@ extern const long double my_extended_precision_longdouble = 1.0000000000000003l;
 //
 // pub export const my_longdouble: c_longdouble = 1.0;
 //
-// pub export const my_extended_precision_longdouble: c_longdouble = 1.0000000000000002;
+// pub export const my_extended_precision_longdouble: c_longdouble = 1.0000000000000003;

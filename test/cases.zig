@@ -95,8 +95,8 @@ pub fn lowerCases(
                 .optimize = optimize,
             };
 
-            // var args_array: std.ArrayList([]const u8) = .empty;
-            // defer args_array.deinit(b.graph.arena);
+            var args_array: std.ArrayList([]const u8) = .empty;
+            defer args_array.deinit(b.graph.arena);
             if (case.args) |args| {
                 var arg_it = std.mem.tokenizeScalar(u8, args, ' ');
                 while (arg_it.next()) |arg| {
@@ -108,10 +108,12 @@ pub fn lowerCases(
                         }
                         options.strict_flex_arrays = @fromBackingInt(@intCast(rest[0] - '0'));
                     } else {
-                        @panic("Unhandled arg in cases");
+                        args_array.append(b.graph.arena, arg) catch @panic("OOM");
                     }
                 }
             }
+            options.extra_args = args_array.items;
+
             const translator: Translator = .initInner(b, translator_conf, options);
             switch (case.kind) {
                 .translate => |output| {

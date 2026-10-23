@@ -36,7 +36,7 @@ int bar(void) {
 //     _ = &a;
 //     var verify_compound: c_int = 0;
 //     _ = &verify_compound;
-//     a += 5;
+//     a += 0b0101;
 //     verify_compound += @intFromBool(a == @as(c_int, 15));
 //     return verify_compound;
 // }

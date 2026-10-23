@@ -265,77 +265,11 @@ fn parseCNumLit(mt: *MacroTranslator) ParseError!ZigNode {
     const arena = mt.t.arena;
     const lit_bytes = mt.tokSlice();
     mt.i += 1;
-
-    // +3 for prefix and +2 for suffix
-    var bytes = try std.ArrayList(u8).initCapacity(arena, lit_bytes.len + 3 + 2);
+    const literal_node, const suffix_str = try mt.t.parseNumber(lit_bytes);
+    const is_float = literal_node.tag() == .float_literal;
 
     const allow_msvc_suffixes = mt.t.comp.langopts.allowFixedSizedIntSuffixes();
     const prefix = aro.Tokenizer.number_literal.Prefix.fromString(lit_bytes, allow_msvc_suffixes);
-    switch (prefix) {
-        .binary => bytes.appendSliceAssumeCapacity("0b"),
-        .octal => bytes.appendSliceAssumeCapacity("0o"),
-        .hex => bytes.appendSliceAssumeCapacity("0x"),
-        .decimal => {},
-    }
-
-    const after_prefix = lit_bytes[prefix.stringLen()..];
-    const after_int = for (after_prefix, 0..) |c, i| switch (c) {
-        '.' => {
-            if (i == 0) {
-                bytes.appendAssumeCapacity('0');
-            }
-            break after_prefix[i..];
-        },
-        'e', 'E' => {
-            if (prefix != .hex) break after_prefix[i..];
-            bytes.appendAssumeCapacity(c);
-        },
-        'p', 'P' => break after_prefix[i..],
-        '0'...'9', 'a'...'d', 'A'...'D', 'f', 'F' => {
-            if (!prefix.digitAllowed(c)) break after_prefix[i..];
-            bytes.appendAssumeCapacity(c);
-        },
-        '\'' => {
-            bytes.appendAssumeCapacity('_');
-        },
-        else => break after_prefix[i..],
-    } else "";
-
-    const after_frac = frac: {
-        if (after_int.len == 0 or after_int[0] != '.') break :frac after_int;
-        bytes.appendAssumeCapacity('.');
-        for (after_int[1..], 1..) |c, i| {
-            if (c == '\'') {
-                bytes.appendAssumeCapacity('_');
-                continue;
-            }
-            if (!prefix.digitAllowed(c)) break :frac after_int[i..];
-            bytes.appendAssumeCapacity(c);
-        }
-        break :frac "";
-    };
-
-    const suffix_str = exponent: {
-        if (after_frac.len == 0) break :exponent after_frac;
-        switch (after_frac[0]) {
-            'e', 'E' => {},
-            'p', 'P' => if (prefix != .hex) break :exponent after_frac,
-            else => break :exponent after_frac,
-        }
-        bytes.appendAssumeCapacity(after_frac[0]);
-        for (after_frac[1..], 1..) |c, i| switch (c) {
-            '+', '-', '0'...'9' => {
-                bytes.appendAssumeCapacity(c);
-            },
-            '\'' => {
-                bytes.appendAssumeCapacity('_');
-            },
-            else => break :exponent after_frac[i..],
-        };
-        break :exponent "";
-    };
-
-    const is_float = after_int.len != suffix_str.len;
     const suffix = aro.Tokenizer.number_literal.Suffix.fromString(suffix_str, if (is_float) .float else .int, allow_msvc_suffixes) orelse {
         try mt.fail("invalid number suffix: '{s}'", .{suffix_str});
         return error.ParseError;
@@ -362,13 +296,7 @@ fn parseCNumLit(mt: *MacroTranslator) ParseError!ZigNode {
                 return error.ParseError;
             },
         });
-        if (bytes.last() == '.') {
-            bytes.appendAssumeCapacity('0');
-        } else if (mem.findAny(u8, bytes.items, ".eEpP") == null) {
-            bytes.appendSliceAssumeCapacity(".0");
-        }
-        const rhs = try ZigTag.float_literal.create(arena, bytes.items);
-        return ZigTag.as.create(arena, .{ .lhs = type_node, .rhs = rhs });
+        return ZigTag.as.create(arena, .{ .lhs = type_node, .rhs = literal_node });
     } else {
         const type_node = try ZigTag.type.create(arena, switch (suffix) {
             .None => "c_int",
@@ -387,7 +315,8 @@ fn parseCNumLit(mt: *MacroTranslator) ParseError!ZigNode {
             .UI64 => "u64",
             else => unreachable,
         });
-        const value = std.fmt.parseInt(i128, bytes.items, 0) catch math.maxInt(i128);
+        const bytes = literal_node.castTag(.integer_literal).?.data;
+        const value = std.fmt.parseInt(i128, bytes, 0) catch math.maxInt(i128);
 
         // make the output less noisy by skipping promoteIntLiteral where
         // it's guaranteed to not be required because of C standard type constraints
@@ -409,7 +338,6 @@ fn parseCNumLit(mt: *MacroTranslator) ParseError!ZigNode {
             else => unreachable,
         };
 
-        const literal_node = try ZigTag.integer_literal.create(arena, bytes.items);
         if (guaranteed_to_fit) {
             return ZigTag.as.create(arena, .{ .lhs = type_node, .rhs = literal_node });
         } else {

@@ -3509,7 +3509,7 @@ fn transIntLiteral(
         else
             ZigTag.true_literal.init();
     }
-    const int_lit_node = try t.createIntNode(val);
+    const int_lit_node, _ = try t.parseNumber(t.tree.tokSlice(tok));
     if (used != .used) {
         return t.finishExpr(qt, used, int_lit_node);
     }
@@ -3571,16 +3571,8 @@ fn transFloatLiteral(
     const qt = float_literal.qt;
     const tok = float_literal.literal_tok;
     if (try t.checkLiteralMacro(tok)) |node| return t.finishExpr(qt, used, node);
-    const val = t.tree.value_map.get(literal_index).?;
 
-    var allocating: std.Io.Writer.Allocating = .init(t.gpa);
-    defer allocating.deinit();
-    _ = val.print(qt, t.comp, &allocating.writer) catch return error.OutOfMemory;
-    if (mem.findScalar(u8, allocating.written(), '.') == null) {
-        allocating.writer.writeAll(".0") catch return error.OutOfMemory;
-    }
-
-    const float_lit_node = try ZigTag.float_literal.create(t.arena, try t.arena.dupe(u8, allocating.written()));
+    const float_lit_node, _ = try t.parseNumber(t.tree.tokSlice(tok));
     if (used != .used) {
         return t.finishExpr(qt, used, float_lit_node);
     }
@@ -4445,4 +4437,95 @@ pub fn getFnProto(t: *Translator, ref: ZigNode) ?*ast.Payload.Func {
         }
     }
     return null;
+}
+
+pub fn parseNumber(t: *Translator, lit_bytes: []const u8) Error!struct { ZigNode, []const u8 } {
+    const arena = t.arena;
+
+    // +3 for prefix and +2 for suffix
+    var bytes = try std.ArrayList(u8).initCapacity(arena, lit_bytes.len + 3 + 2);
+
+    const allow_msvc_suffixes = t.comp.langopts.allowFixedSizedIntSuffixes();
+    const prefix = aro.Tokenizer.number_literal.Prefix.fromString(lit_bytes, allow_msvc_suffixes);
+    switch (prefix) {
+        .binary => bytes.appendSliceAssumeCapacity("0b"),
+        .octal => bytes.appendSliceAssumeCapacity("0o"),
+        .hex => bytes.appendSliceAssumeCapacity("0x"),
+        .decimal => {},
+    }
+
+    const after_prefix = lit_bytes[prefix.stringLen()..];
+    const prefix_len = bytes.items.len;
+    const after_int = for (after_prefix, 0..) |c, i| switch (c) {
+        '.' => {
+            break after_prefix[i..];
+        },
+        'e', 'E' => {
+            if (prefix != .hex) break after_prefix[i..];
+            bytes.appendAssumeCapacity(c);
+        },
+        'p', 'P' => break after_prefix[i..],
+        '0' => {
+            if (bytes.items.len == 0) continue; // Avoid leading zero
+            bytes.appendAssumeCapacity(c);
+        },
+        '1'...'9', 'a'...'d', 'A'...'D', 'f', 'F' => {
+            if (!prefix.digitAllowed(c)) break after_prefix[i..];
+            bytes.appendAssumeCapacity(c);
+        },
+        '\'' => {
+            if (bytes.items.len == 0) continue; // Avoid leading zero
+            bytes.appendAssumeCapacity('_');
+        },
+        else => break after_prefix[i..],
+    } else "";
+    if (bytes.items.len == prefix_len) {
+        bytes.appendAssumeCapacity('0');
+    }
+
+    const after_frac = frac: {
+        if (after_int.len == 0 or after_int[0] != '.') break :frac after_int;
+        bytes.appendAssumeCapacity('.');
+        for (after_int[1..], 1..) |c, i| {
+            if (c == '\'') {
+                bytes.appendAssumeCapacity('_');
+                continue;
+            }
+            if (!prefix.digitAllowed(c)) break :frac after_int[i..];
+            bytes.appendAssumeCapacity(c);
+        }
+        break :frac "";
+    };
+
+    const suffix_str = exponent: {
+        if (after_frac.len == 0) break :exponent after_frac;
+        switch (after_frac[0]) {
+            'e', 'E' => {},
+            'p', 'P' => if (prefix != .hex) break :exponent after_frac,
+            else => break :exponent after_frac,
+        }
+        bytes.appendAssumeCapacity(after_frac[0]);
+        for (after_frac[1..], 1..) |c, i| switch (c) {
+            '+', '-', '0'...'9' => {
+                bytes.appendAssumeCapacity(c);
+            },
+            '\'' => {
+                bytes.appendAssumeCapacity('_');
+            },
+            else => break :exponent after_frac[i..],
+        };
+        break :exponent "";
+    };
+
+    const is_float = after_int.len != suffix_str.len;
+    if (is_float) {
+        if (bytes.last() == '.') {
+            bytes.appendAssumeCapacity('0');
+        } else if (mem.findAny(u8, bytes.items, ".eEpP") == null) {
+            bytes.appendSliceAssumeCapacity(".0");
+        }
+        return .{ try ZigTag.float_literal.create(arena, bytes.items), suffix_str };
+    } else {
+        return .{ try ZigTag.integer_literal.create(arena, bytes.items), suffix_str };
+    }
 }
