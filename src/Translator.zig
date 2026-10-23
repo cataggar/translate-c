@@ -207,8 +207,7 @@ fn finishExpr(
     const int_node = try ZigTag.int_from_bool.create(t.arena, result);
     if (used == .coerced) return int_node;
 
-    const ty_node = try ZigTag.type.create(t.arena, "c_int");
-    return ZigTag.as.create(t.arena, .{ .lhs = ty_node, .rhs = int_node });
+    return ZigTag.as.create(t.arena, .{ .lhs = .int, .rhs = int_node });
 }
 
 pub fn addTopLevelDecl(t: *Translator, name: []const u8, decl_node: ZigNode) !void {
@@ -534,23 +533,23 @@ fn transDecl(t: *Translator, scope: *Scope, decl: Node.Index) !void {
     }
 }
 
-pub const builtin_typedef_map = std.StaticStringMap([]const u8).initComptime(.{
-    .{ "uint8_t", "u8" },
-    .{ "int8_t", "i8" },
-    .{ "uint16_t", "u16" },
-    .{ "int16_t", "i16" },
-    .{ "uint24_t", "u24" },
-    .{ "int24_t", "i24" },
-    .{ "uint32_t", "u32" },
-    .{ "int32_t", "i32" },
-    .{ "uint48_t", "u48" },
-    .{ "int48_t", "i48" },
-    .{ "uint64_t", "u64" },
-    .{ "int64_t", "i64" },
-    .{ "intptr_t", "isize" },
-    .{ "uintptr_t", "usize" },
-    .{ "ssize_t", "isize" },
-    .{ "size_t", "usize" },
+pub const builtin_typedef_map = std.StaticStringMap(ZigNode).initComptime(.{
+    .{ "uint8_t", ZigNode.u8 },
+    .{ "int8_t", ZigNode.i8 },
+    .{ "uint16_t", ZigNode.u16 },
+    .{ "int16_t", ZigNode.i16 },
+    .{ "uint24_t", ZigNode.u24 },
+    .{ "int24_t", ZigNode.i24 },
+    .{ "uint32_t", ZigNode.u32 },
+    .{ "int32_t", ZigNode.i32 },
+    .{ "uint48_t", ZigNode.u48 },
+    .{ "int48_t", ZigNode.i48 },
+    .{ "uint64_t", ZigNode.u64 },
+    .{ "int64_t", ZigNode.i64 },
+    .{ "intptr_t", ZigNode.isize },
+    .{ "uintptr_t", ZigNode.usize },
+    .{ "ssize_t", ZigNode.isize },
+    .{ "size_t", ZigNode.usize },
 });
 
 fn transTypeDef(t: *Translator, scope: *Scope, typedef_node: Node.Index) Error!void {
@@ -564,9 +563,7 @@ fn transTypeDef(t: *Translator, scope: *Scope, typedef_node: Node.Index) Error!v
     var name: []const u8 = t.tree.tokSlice(typedef_decl.name_tok);
     try t.typedefs.put(t.gpa, name, {});
 
-    if (builtin_typedef_map.get(name)) |builtin| {
-        return t.typedef_decls.putNoClobber(t.gpa, typedef_node, builtin);
-    }
+    if (builtin_typedef_map.has(name)) return;
     if (!toplevel) name = try bs.makeMangledName(name);
     try t.typedef_decls.putNoClobber(t.gpa, typedef_node, name);
 
@@ -1221,32 +1218,32 @@ fn transType(t: *Translator, scope: *Scope, qt: QualType, source_loc: TokenIndex
             const type_name = try t.getTypeStr(qt);
             return t.fail(error.UnsupportedType, source_loc, "TODO support atomic type: '{s}'", .{type_name});
         },
-        .void => return ZigTag.type.create(t.arena, "anyopaque"),
-        .bool => return ZigTag.type.create(t.arena, "bool"),
+        .void => return .anyopaque,
+        .bool => return .bool,
         .int => |int_ty| switch (int_ty) {
-            //.char => return ZigTag.type.create(t.arena, "c_char"), // TODO: this is the preferred translation
-            .char => return ZigTag.type.create(t.arena, "u8"),
-            .schar => return ZigTag.type.create(t.arena, "i8"),
-            .uchar => return ZigTag.type.create(t.arena, "u8"),
-            .short => return ZigTag.type.create(t.arena, "c_short"),
-            .ushort => return ZigTag.type.create(t.arena, "c_ushort"),
-            .int => return ZigTag.type.create(t.arena, "c_int"),
-            .uint => return ZigTag.type.create(t.arena, "c_uint"),
-            .long => return ZigTag.type.create(t.arena, "c_long"),
-            .ulong => return ZigTag.type.create(t.arena, "c_ulong"),
-            .long_long => return ZigTag.type.create(t.arena, "c_longlong"),
-            .ulong_long => return ZigTag.type.create(t.arena, "c_ulonglong"),
-            .int128 => return ZigTag.type.create(t.arena, "i128"),
-            .uint128 => return ZigTag.type.create(t.arena, "u128"),
-            .int24 => return ZigTag.type.create(t.arena, "i24"),
-            .uint24 => return ZigTag.type.create(t.arena, "u24"),
+            //.char => return .c_char, // TODO: this is the preferred translation
+            .char => return .u8,
+            .schar => return .i8,
+            .uchar => return .u8,
+            .short => return .short,
+            .ushort => return .ushort,
+            .int => return .int,
+            .uint => return .uint,
+            .long => return .long,
+            .ulong => return .ulong,
+            .long_long => return .longlong,
+            .ulong_long => return .ulonglong,
+            .int128 => return .i128,
+            .uint128 => return .u128,
+            .int24 => return .i24,
+            .uint24 => return .u24,
         },
         .float => |float_ty| switch (float_ty) {
-            .fp16, .float16 => return ZigTag.type.create(t.arena, "f16"),
-            .float, .float32 => return ZigTag.type.create(t.arena, "f32"),
-            .double, .float64, .float32x => return ZigTag.type.create(t.arena, "f64"),
-            .long_double, .float64x => return ZigTag.type.create(t.arena, "c_longdouble"),
-            .float128 => return ZigTag.type.create(t.arena, "f128"),
+            .fp16, .float16 => return .f16,
+            .float, .float32 => return .f32,
+            .double, .float64, .float32x => return .f64,
+            .long_double, .float64x => return .longdouble,
+            .float128 => return .f128,
             .bf16 => return t.fail(error.UnsupportedType, source_loc, "TODO support bfloat16", .{}),
             .dfloat32,
             .dfloat64,
@@ -1324,7 +1321,7 @@ fn transType(t: *Translator, scope: *Scope, qt: QualType, source_loc: TokenIndex
         .typedef => |typedef_ty| {
             var trans_scope = scope;
             const typedef_name = typedef_ty.name.lookup(t.comp);
-            if (builtin_typedef_map.get(typedef_name)) |builtin| return ZigTag.type.create(t.arena, builtin);
+            if (builtin_typedef_map.get(typedef_name)) |builtin| return builtin;
             if (t.global_names.contains(typedef_name)) trans_scope = &t.global_scope.base;
 
             try t.transTypeDef(trans_scope, typedef_ty.decl_node);
@@ -1535,12 +1532,12 @@ fn transFnType(
 
     const return_type_node: ZigNode = blk: {
         if (ctx.noreturn) {
-            break :blk .noreturn_type;
+            break :blk .noreturn;
         } else {
             const return_qt = func_ty.return_type;
             if (return_qt.is(t.comp, .void)) {
                 // convert primitive anyopaque to actual void (only for return type)
-                break :blk .void_type;
+                break :blk .void;
             } else {
                 break :blk t.transType(scope, return_qt, source_loc) catch |err| switch (err) {
                     error.UnsupportedType => {
@@ -1584,28 +1581,28 @@ fn transFnType(
 /// Produces a Zig AST node by translating a Type, respecting the width, but modifying the signed-ness.
 /// Asserts the type is an integer.
 fn transTypeIntWidthOf(t: *Translator, qt: QualType, is_signed: bool) TypeError!ZigNode {
-    return ZigTag.type.create(t.arena, loop: switch (qt.base(t.comp).type) {
+    return loop: switch (qt.base(t.comp).type) {
         .int => |int_ty| switch (int_ty) {
-            .char, .schar, .uchar => if (is_signed) "i8" else "u8",
-            .short, .ushort => if (is_signed) "c_short" else "c_ushort",
-            .int, .uint => if (is_signed) "c_int" else "c_uint",
-            .long, .ulong => if (is_signed) "c_long" else "c_ulong",
-            .long_long, .ulong_long => if (is_signed) "c_longlong" else "c_ulonglong",
-            .int128, .uint128 => if (is_signed) "i128" else "u128",
-            .int24, .uint24 => if (is_signed) "i24" else "u24",
+            .char, .schar, .uchar => if (is_signed) .i8 else .u8,
+            .short, .ushort => if (is_signed) .short else .ushort,
+            .int, .uint => if (is_signed) .int else .uint,
+            .long, .ulong => if (is_signed) .long else .ulong,
+            .long_long, .ulong_long => if (is_signed) .longlong else .ulonglong,
+            .int128, .uint128 => if (is_signed) .i128 else .u128,
+            .int24, .uint24 => if (is_signed) .i24 else .u24,
         },
-        .bit_int => |bit_int_ty| try std.fmt.allocPrint(t.arena, "{s}{d}", .{
+        .bit_int => |bit_int_ty| ZigTag.type.create(t.arena, try std.fmt.allocPrint(t.arena, "{s}{d}", .{
             if (is_signed) "i" else "u",
             bit_int_ty.bits,
-        }),
-        .@"enum" => |enum_ty| blk: {
+        })),
+        .@"enum" => |enum_ty| {
             const tag_ty = enum_ty.tag orelse
-                break :blk if (is_signed) "c_int" else "c_uint";
+                break :loop if (is_signed) .int else .uint;
 
             continue :loop tag_ty.base(t.comp).type;
         },
         else => unreachable, // only call this function when it has already been determined the type is int
-    });
+    };
 }
 
 fn transTypeInit(
@@ -2596,7 +2593,7 @@ fn transCastExpr(
             const operand_qt = cast.operand.qt(t.tree);
             if (t.signedness(operand_qt) == .signed or operand_qt.bitSizeof(t.comp) > t.comp.target.ptrBitWidth()) {
                 sub_expr_node = try ZigTag.as.create(t.arena, .{
-                    .lhs = try ZigTag.type.create(t.arena, "usize"),
+                    .lhs = .usize,
                     .rhs = try ZigTag.int_cast.create(t.arena, sub_expr_node),
                 });
             }
@@ -3367,7 +3364,7 @@ fn transArrayAccess(t: *Translator, scope: *Scope, array_access: Node.ArrayAcces
             // First cast to `isize` to get proper sign extension and
             // then @bitCast to `usize` to satisfy the compiler.
             const index_isize = try ZigTag.as.create(t.arena, .{
-                .lhs = try ZigTag.type.create(t.arena, "isize"),
+                .lhs = .isize,
                 .rhs = try ZigTag.int_cast.create(t.arena, index),
             });
             break :index try ZigTag.bit_cast.create(t.arena, index_isize);
@@ -4021,7 +4018,7 @@ fn transTypeInfo(
     if (used != .used) return t.finishExpr(typeinfo.qt, used, info_node);
 
     const as = try ZigTag.as.create(t.arena, .{
-        .lhs = try ZigTag.type.create(t.arena, "usize"),
+        .lhs = .usize,
         .rhs = info_node,
     });
     return t.finishExpr(typeinfo.qt, used, as);
@@ -4134,7 +4131,7 @@ fn transShufflevectorExpr(
 
         const mask_type = try ZigTag.vector.create(t.arena, .{
             .lhs = try t.createNumberNode(mask_len),
-            .rhs = try ZigTag.type.create(t.arena, "i32"),
+            .rhs = .i32,
         });
 
         const init_list = try t.arena.alloc(ZigNode, mask_len);
@@ -4243,12 +4240,12 @@ pub fn createHelperCallNode(t: *Translator, name: helpers.Tag, args_opt: ?[]cons
 /// node -> @as(usize, @bitCast(@as(isize, @intCast(node))))
 fn usizeCastForWrappingPtrArithmetic(t: *Translator, node: ZigNode) TransError!ZigNode {
     const intcast_node = try ZigTag.as.create(t.arena, .{
-        .lhs = try ZigTag.type.create(t.arena, "isize"),
+        .lhs = .isize,
         .rhs = try ZigTag.int_cast.create(t.arena, node),
     });
 
     return ZigTag.as.create(t.arena, .{
-        .lhs = try ZigTag.type.create(t.arena, "usize"),
+        .lhs = .usize,
         .rhs = try ZigTag.bit_cast.create(t.arena, intcast_node),
     });
 }

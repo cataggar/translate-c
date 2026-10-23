@@ -20,8 +20,6 @@ pub const Node = extern union {
     pub const zero_literal: Node = .initSmall(.zero_literal);
     pub const one_literal: Node = .initSmall(.one_literal);
     pub const @"unreachable": Node = .initSmall(.@"unreachable");
-    pub const void_type: Node = .initSmall(.void_type);
-    pub const noreturn_type: Node = .initSmall(.noreturn_type);
     pub const @"anytype": Node = .initSmall(.@"anytype");
     pub const @"continue": Node = .initSmall(.@"continue");
     pub const @"break": Node = .initSmall(.@"break");
@@ -29,6 +27,53 @@ pub const Node = extern union {
     fn initSmall(comptime t: Tag) Node {
         comptime std.debug.assert(@backingInt(t) < Tag.no_payload_count);
         return .{ .tag_if_small_enough = @backingInt(t) };
+    }
+
+    pub const @"noreturn": Node = staticType("noreturn");
+    pub const @"void": Node = staticType("void");
+    pub const @"anyopaque": Node = staticType("anyopaque");
+    pub const @"bool": Node = staticType("bool");
+    pub const char: Node = staticType("c_char");
+    pub const short: Node = staticType("c_short");
+    pub const ushort: Node = staticType("c_ushort");
+    pub const int: Node = staticType("c_int");
+    pub const uint: Node = staticType("c_uint");
+    pub const long: Node = staticType("c_long");
+    pub const ulong: Node = staticType("c_ulong");
+    pub const longlong: Node = staticType("c_longlong");
+    pub const ulonglong: Node = staticType("c_ulonglong");
+
+    pub const @"i8": Node = staticType("i8");
+    pub const @"u8": Node = staticType("u8");
+    pub const @"i16": Node = staticType("i16");
+    pub const @"u16": Node = staticType("u16");
+    pub const @"i24": Node = staticType("i24");
+    pub const @"u24": Node = staticType("u24");
+    pub const @"i32": Node = staticType("i32");
+    pub const @"u32": Node = staticType("u32");
+    pub const @"i48": Node = staticType("i48");
+    pub const @"u48": Node = staticType("u48");
+    pub const @"i64": Node = staticType("i64");
+    pub const @"u64": Node = staticType("u64");
+    pub const @"i128": Node = staticType("i128");
+    pub const @"u128": Node = staticType("u128");
+    pub const @"isize": Node = staticType("isize");
+    pub const @"usize": Node = staticType("usize");
+
+    pub const @"f16": Node = staticType("f16");
+    pub const @"f32": Node = staticType("f32");
+    pub const @"f64": Node = staticType("f64");
+    pub const longdouble: Node = staticType("c_longdouble");
+    pub const @"f80": Node = staticType("f80");
+    pub const @"f128": Node = staticType("f128");
+
+    fn staticType(comptime str: []const u8) Node {
+        return .{
+            .ptr_otherwise = @constCast(&(Payload.Value{
+                .base = .{ .tag = .type },
+                .data = str,
+            }).base),
+        };
     }
 
     pub const Tag = enum {
@@ -45,8 +90,6 @@ pub const Node = extern union {
         zero_literal,
         one_literal,
         @"unreachable",
-        void_type,
-        noreturn_type,
         @"anytype",
         @"continue",
         @"break",
@@ -287,8 +330,6 @@ pub const Node = extern union {
                 .return_void,
                 .zero_literal,
                 .one_literal,
-                .void_type,
-                .noreturn_type,
                 .@"anytype",
                 .@"continue",
                 .@"break",
@@ -1079,16 +1120,6 @@ fn renderNode(c: *Context, node: Node) Allocator.Error!NodeIndex {
         .@"unreachable" => return c.addNode(.{
             .tag = .unreachable_literal,
             .main_token = try c.addToken(.keyword_unreachable, "unreachable"),
-            .data = undefined,
-        }),
-        .void_type => return c.addNode(.{
-            .tag = .identifier,
-            .main_token = try c.addToken(.identifier, "void"),
-            .data = undefined,
-        }),
-        .noreturn_type => return c.addNode(.{
-            .tag = .identifier,
-            .main_token = try c.addToken(.identifier, "noreturn"),
             .data = undefined,
         }),
         .@"continue" => return c.addNode(.{
@@ -2485,8 +2516,6 @@ fn renderNodeGrouped(c: *Context, node: Node) !NodeIndex {
         .return_void,
         .zero_literal,
         .one_literal,
-        .void_type,
-        .noreturn_type,
         .@"anytype",
         .div_trunc,
         .int_cast,

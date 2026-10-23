@@ -86,7 +86,7 @@ pub fn transFnMacro(mt: *MacroTranslator) ParseError!void {
         const fn_decl = try ZigTag.pub_inline_fn.create(mt.t.arena, .{
             .name = mt.name,
             .params = fn_params,
-            .return_type = .void_type,
+            .return_type = .void,
             .body = try block_scope.complete(),
         });
         try mt.t.addTopLevelDecl(mt.name, fn_decl);
@@ -284,37 +284,37 @@ fn parseCNumLit(mt: *MacroTranslator) ParseError!ZigNode {
     }
 
     if (is_float) {
-        const type_node = try ZigTag.type.create(arena, switch (suffix) {
-            .F16 => "f16",
-            .F, .F32 => "f32",
-            .None, .F32x, .F64 => "f64",
-            .L, .F64x => "c_longdouble",
-            .W => "f80",
-            .Q, .F128 => "f128",
+        const type_node: ZigNode = switch (suffix) {
+            .F16 => .f16,
+            .F, .F32 => .f32,
+            .None, .F32x, .F64 => .f64,
+            .L, .F64x => .longdouble,
+            .W => .f80,
+            .Q, .F128 => .f128,
             else => {
                 try mt.fail("TODO: float literal suffix: '{s}'", .{suffix_str});
                 return error.ParseError;
             },
-        });
+        };
         return ZigTag.as.create(arena, .{ .lhs = type_node, .rhs = literal_node });
     } else {
-        const type_node = try ZigTag.type.create(arena, switch (suffix) {
-            .None => "c_int",
-            .U => "c_uint",
-            .L => "c_long",
-            .UL => "c_ulong",
-            .LL => "c_longlong",
-            .ULL => "c_ulonglong",
-            .I8 => "i8",
-            .UI8 => "u8",
-            .I16 => "i16",
-            .UI16 => "u16",
-            .I32 => "i32",
-            .UI32 => "u32",
-            .I64 => "i64",
-            .UI64 => "u64",
+        const type_node: ZigNode = switch (suffix) {
+            .None => .int,
+            .U => .uint,
+            .L => .long,
+            .UL => .ulong,
+            .LL => .longlong,
+            .ULL => .ulonglong,
+            .I8 => .i8,
+            .UI8 => .u8,
+            .I16 => .i16,
+            .UI16 => .u16,
+            .I32 => .i32,
+            .UI32 => .u32,
+            .I64 => .i64,
+            .UI64 => .u64,
             else => unreachable,
-        });
+        };
         const bytes = literal_node.castTag(.integer_literal).?.data;
         const value = std.fmt.parseInt(i128, bytes, 0) catch math.maxInt(i128);
 
@@ -581,9 +581,8 @@ fn parseCPrimaryExpr(mt: *MacroTranslator, scope: *Scope) ParseError!ZigNode {
             mt.i += 1;
 
             const mangled_name = scope.getAlias(slice) orelse slice;
-            if (Translator.builtin_typedef_map.get(mangled_name)) |ty| {
-                return ZigTag.type.create(arena, ty);
-            }
+            if (Translator.builtin_typedef_map.get(mangled_name)) |builtin| return builtin;
+
             if (builtins.get(mt.t.comp, mangled_name)) |builtin| builtin: {
                 if (builtin.lib_name != null and mt.t.global_scope.contains(mangled_name)) {
                     break :builtin; // Prefer referencing explicitly translated declarations
@@ -682,8 +681,7 @@ fn macroIntToBool(mt: *MacroTranslator, node: ZigNode) !ZigNode {
 fn parseCCondExpr(mt: *MacroTranslator, scope: *Scope) ParseError!ZigNode {
     const condition = try mt.parseCOrExpr(scope);
     if (!mt.eat(.question_mark)) return condition;
-    const bool_ty = try ZigTag.type.create(mt.t.arena, "bool");
-    const node = try mt.t.createHelperCallNode(.cast, &.{ bool_ty, condition });
+    const node = try mt.t.createHelperCallNode(.cast, &.{ .bool, condition });
 
     const then_body = try mt.parseCOrExpr(scope);
     try mt.expect(.colon);
@@ -947,9 +945,8 @@ fn parseCSpecifierQualifierList(mt: *MacroTranslator, scope: *Scope) ParseError!
 
             if (mt.t.typedefs.contains(mangled_name)) {
                 mt.i += 1;
-                if (Translator.builtin_typedef_map.get(mangled_name)) |ty| {
-                    return try ZigTag.type.create(mt.t.arena, ty);
-                }
+                if (Translator.builtin_typedef_map.get(mangled_name)) |builtin| return builtin;
+
                 if (builtins.get(mt.t.comp, mangled_name)) |builtin| builtin: {
                     if (builtin.lib_name != null and mt.t.global_scope.contains(mangled_name)) {
                         break :builtin; // Prefer referencing explicitly translated declarations
@@ -965,11 +962,11 @@ fn parseCSpecifierQualifierList(mt: *MacroTranslator, scope: *Scope) ParseError!
         },
         .keyword_void => {
             mt.i += 1;
-            return try ZigTag.type.create(mt.t.arena, "anyopaque");
+            return .anyopaque;
         },
         .keyword_bool => {
             mt.i += 1;
-            return try ZigTag.type.create(mt.t.arena, "bool");
+            return .bool;
         },
         .keyword_char,
         .keyword_int,
@@ -1047,40 +1044,40 @@ fn parseCNumericType(mt: *MacroTranslator) ParseError!ZigNode {
     }
 
     if (kw.eql(.{ .int = 1 }) or kw.eql(.{ .signed = 1 }) or kw.eql(.{ .signed = 1, .int = 1 }))
-        return ZigTag.type.create(mt.t.arena, "c_int");
+        return .int;
 
     if (kw.eql(.{ .unsigned = 1 }) or kw.eql(.{ .unsigned = 1, .int = 1 }))
-        return ZigTag.type.create(mt.t.arena, "c_uint");
+        return .uint;
 
     if (kw.eql(.{ .long = 1 }) or kw.eql(.{ .signed = 1, .long = 1 }) or kw.eql(.{ .long = 1, .int = 1 }) or kw.eql(.{ .signed = 1, .long = 1, .int = 1 }))
-        return ZigTag.type.create(mt.t.arena, "c_long");
+        return .long;
 
     if (kw.eql(.{ .unsigned = 1, .long = 1 }) or kw.eql(.{ .unsigned = 1, .long = 1, .int = 1 }))
-        return ZigTag.type.create(mt.t.arena, "c_ulong");
+        return .ulong;
 
     if (kw.eql(.{ .long = 2 }) or kw.eql(.{ .signed = 1, .long = 2 }) or kw.eql(.{ .long = 2, .int = 1 }) or kw.eql(.{ .signed = 1, .long = 2, .int = 1 }))
-        return ZigTag.type.create(mt.t.arena, "c_longlong");
+        return .longlong;
 
     if (kw.eql(.{ .unsigned = 1, .long = 2 }) or kw.eql(.{ .unsigned = 1, .long = 2, .int = 1 }))
-        return ZigTag.type.create(mt.t.arena, "c_ulonglong");
+        return .ulonglong;
 
     if (kw.eql(.{ .signed = 1, .char = 1 }))
-        return ZigTag.type.create(mt.t.arena, "i8");
+        return .i8;
 
     if (kw.eql(.{ .char = 1 }) or kw.eql(.{ .unsigned = 1, .char = 1 }))
-        return ZigTag.type.create(mt.t.arena, "u8");
+        return .u8;
 
     if (kw.eql(.{ .short = 1 }) or kw.eql(.{ .signed = 1, .short = 1 }) or kw.eql(.{ .short = 1, .int = 1 }) or kw.eql(.{ .signed = 1, .short = 1, .int = 1 }))
-        return ZigTag.type.create(mt.t.arena, "c_short");
+        return .short;
 
     if (kw.eql(.{ .unsigned = 1, .short = 1 }) or kw.eql(.{ .unsigned = 1, .short = 1, .int = 1 }))
-        return ZigTag.type.create(mt.t.arena, "c_ushort");
+        return .ushort;
 
     if (kw.eql(.{ .float = 1 }))
-        return ZigTag.type.create(mt.t.arena, "f32");
+        return .f32;
 
     if (kw.eql(.{ .double = 1 }))
-        return ZigTag.type.create(mt.t.arena, "f64");
+        return .f64;
 
     if (kw.eql(.{ .long = 1, .double = 1 })) {
         try mt.fail("unable to translate: TODO long double", .{});
@@ -1204,7 +1201,7 @@ fn parseCPostfixExprInner(mt: *MacroTranslator, scope: *Scope, type_name: ?ZigNo
 
                 const index_val = try mt.macroIntFromBool(try mt.parseCExpr(scope));
                 const index = try ZigTag.as.create(arena, .{
-                    .lhs = try ZigTag.type.create(arena, "usize"),
+                    .lhs = .usize,
                     .rhs = try ZigTag.int_cast.create(arena, index_val),
                 });
                 node = try ZigTag.array_access.create(arena, .{ .lhs = node, .rhs = index });
@@ -1231,8 +1228,7 @@ fn parseCPostfixExprInner(mt: *MacroTranslator, scope: *Scope, type_name: ?ZigNo
                                     // we need to cast; likely the parameter in
                                     // the call is still int and will not
                                     // coerce.
-                                    const bool_ty = try ZigTag.type.create(mt.t.arena, "bool");
-                                    arg = try mt.t.createHelperCallNode(.cast, &.{ bool_ty, arg });
+                                    arg = try mt.t.createHelperCallNode(.cast, &.{ .bool, arg });
                                 }
                             }
                         }
