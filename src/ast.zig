@@ -9,6 +9,28 @@ pub const Node = extern union {
     tag_if_small_enough: usize,
     ptr_otherwise: *Payload,
 
+    pub const declaration: Node = .initSmall(.declaration);
+    pub const null_literal: Node = .initSmall(.null_literal);
+    pub const undefined_literal: Node = .initSmall(.undefined_literal);
+    pub const opaque_literal: Node = .initSmall(.opaque_literal);
+    pub const true_literal: Node = .initSmall(.true_literal);
+    pub const false_literal: Node = .initSmall(.false_literal);
+    pub const empty_block: Node = .initSmall(.empty_block);
+    pub const return_void: Node = .initSmall(.return_void);
+    pub const zero_literal: Node = .initSmall(.zero_literal);
+    pub const one_literal: Node = .initSmall(.one_literal);
+    pub const @"unreachable": Node = .initSmall(.@"unreachable");
+    pub const void_type: Node = .initSmall(.void_type);
+    pub const noreturn_type: Node = .initSmall(.noreturn_type);
+    pub const @"anytype": Node = .initSmall(.@"anytype");
+    pub const @"continue": Node = .initSmall(.@"continue");
+    pub const @"break": Node = .initSmall(.@"break");
+
+    fn initSmall(comptime t: Tag) Node {
+        comptime std.debug.assert(@backingInt(t) < Tag.no_payload_count);
+        return .{ .tag_if_small_enough = @backingInt(t) };
+    }
+
     pub const Tag = enum {
         /// Declarations add themselves to the correct scopes and should not be emitted as this tag.
         declaration,
@@ -414,18 +436,13 @@ pub const Node = extern union {
             };
         }
 
-        pub fn init(comptime t: Tag) Node {
-            comptime std.debug.assert(@backingInt(t) < Tag.no_payload_count);
-            return .{ .tag_if_small_enough = @backingInt(t) };
-        }
-
         pub fn create(comptime t: Tag, ally: Allocator, data: Data(t)) error{OutOfMemory}!Node {
             const ptr = try ally.create(t.Type());
             ptr.* = .{
                 .base = .{ .tag = t },
                 .data = data,
             };
-            return Node{ .ptr_otherwise = &ptr.base };
+            return .{ .ptr_otherwise = &ptr.base };
         }
 
         pub fn Data(comptime t: Tag) type {

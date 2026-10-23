@@ -74,19 +74,19 @@ pub fn transFnMacro(mt: *MacroTranslator) ParseError!void {
         param.* = .{
             .is_noalias = false,
             .name = mangled_name,
-            .type = ZigTag.@"anytype".init(),
+            .type = .@"anytype",
         };
         try block_scope.discardVariable(mangled_name);
     }
 
     // #define FOO(x)
     if (mt.peek() == .eof) {
-        try block_scope.statements.append(mt.t.gpa, ZigTag.return_void.init());
+        try block_scope.statements.append(mt.t.gpa, .return_void);
 
         const fn_decl = try ZigTag.pub_inline_fn.create(mt.t.arena, .{
             .name = mt.name,
             .params = fn_params,
-            .return_type = ZigTag.void_type.init(),
+            .return_type = .void_type,
             .body = try block_scope.complete(),
         });
         try mt.t.addTopLevelDecl(mt.name, fn_decl);
@@ -639,7 +639,7 @@ fn parseCPrimaryExpr(mt: *MacroTranslator, scope: *Scope) ParseError!ZigNode {
 
             if (!has_default) try cases.append(gpa, try ZigTag.switch_else.create(
                 arena,
-                try ZigTag.@"comptime".create(arena, ZigTag.@"unreachable".init()),
+                try ZigTag.@"comptime".create(arena, .@"unreachable"),
             ));
 
             const sw = try ZigTag.@"switch".create(arena, .{
@@ -673,10 +673,10 @@ fn macroIntToBool(mt: *MacroTranslator, node: ZigNode) !ZigNode {
     if (node.tag() == .string_literal) {
         // @intFromPtr(node) != 0
         const int_from_ptr = try ZigTag.int_from_ptr.create(mt.t.arena, node);
-        return ZigTag.not_equal.create(mt.t.arena, .{ .lhs = int_from_ptr, .rhs = ZigTag.zero_literal.init() });
+        return ZigTag.not_equal.create(mt.t.arena, .{ .lhs = int_from_ptr, .rhs = .zero_literal });
     }
     // node != 0
-    return ZigTag.not_equal.create(mt.t.arena, .{ .lhs = node, .rhs = ZigTag.zero_literal.init() });
+    return ZigTag.not_equal.create(mt.t.arena, .{ .lhs = node, .rhs = .zero_literal });
 }
 
 fn parseCCondExpr(mt: *MacroTranslator, scope: *Scope) ParseError!ZigNode {

@@ -134,7 +134,7 @@ pub const Block = struct {
                 .stmts = stmts,
             });
         }
-        if (block.statements.items.len == 0) return ast.Node.Tag.empty_block.init();
+        if (block.statements.items.len == 0) return .empty_block;
         return ast.Node.Tag.block.create(arena, .{
             .label = block.label,
             .stmts = try arena.dupe(ast.Node, block.statements.items),
