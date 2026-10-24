@@ -946,10 +946,7 @@ fn transVarDecl(t: *Translator, scope: *Scope, variable: Node.Variable, decl_nod
         }
     }
 
-    const type_node = (if (variable.initializer) |init|
-        t.transTypeInit(scope, variable.qt, init, variable.name_tok)
-    else
-        t.transType(scope, variable.qt, variable.name_tok)) catch |err| switch (err) {
+    const type_node = t.transType(scope, variable.qt, variable.name_tok) catch |err| switch (err) {
         error.UnsupportedType => {
             return t.failDecl(scope, variable.name_tok, name, "unable to translate variable declaration type", .{});
         },
@@ -963,14 +960,10 @@ fn transVarDecl(t: *Translator, scope: *Scope, variable: Node.Variable, decl_nod
     var self_referential = false;
     const init_node: ?ZigNode = init: {
         if (variable.initializer) |init| {
-            const maybe_literal = init.get(t.tree);
             if (!toplevel) try t.wip_var_inits.putNoClobber(t.gpa, decl_node, {});
             defer _ = t.wip_var_inits.remove(decl_node);
 
-            const init_node = (if (maybe_literal == .string_literal_expr)
-                t.transStringLiteralInitializer(init, maybe_literal.string_literal_expr, type_node)
-            else
-                t.transExpr(scope, init, .coercedTo(t, variable.qt))) catch |err| switch (err) {
+            const init_node = t.transInitializerExpr(scope, init, variable.qt) catch |err| switch (err) {
                 error.SelfReferential => {
                     self_referential = true;
                     break :init .undefined_literal;
@@ -1617,31 +1610,6 @@ fn transTypeIntWidthOf(t: *Translator, qt: QualType, is_signed: bool) TypeError!
         },
         else => unreachable, // only call this function when it has already been determined the type is int
     };
-}
-
-fn transTypeInit(
-    t: *Translator,
-    scope: *Scope,
-    qt: QualType,
-    init: Node.Index,
-    source_loc: TokenIndex,
-) TypeError!ZigNode {
-    switch (init.get(t.tree)) {
-        .string_literal_expr => |literal| {
-            const elem_ty = try t.transType(scope, qt.childType(t.comp), source_loc);
-
-            const string_lit_size = literal.qt.arrayLen(t.comp).?;
-            const array_size = qt.arrayLen(t.comp).?;
-
-            if (array_size == string_lit_size) {
-                return ZigTag.null_sentinel_array_type.create(t.arena, .{ .len = array_size - 1, .elem_type = elem_ty });
-            } else {
-                return ZigTag.array_type.create(t.arena, .{ .len = array_size, .elem_type = elem_ty });
-            }
-        },
-        else => {},
-    }
-    return t.transType(scope, qt, source_loc);
 }
 
 // ============
@@ -2552,7 +2520,7 @@ fn transCastExpr(
                 if (used.isBoolRes().?) {
                     // @intFromPtr("foo") != 0, always true
                     const str = switch (literal.kind) {
-                        .ascii, .utf8 => try t.transNarrowStringLiteral(index, literal, .u8, .used_non_bool),
+                        .ascii, .utf8 => try t.transNarrowStringLiteral(index, literal, .u8, .used_non_bool, .in_type),
                         .utf16, .utf32, .wide => try t.transStringLiteral(scope, index, literal, .used_non_bool),
                     };
 
@@ -2661,6 +2629,7 @@ fn transCastExpr(
                         literal,
                         try t.transType(scope, dest_ptr.child, cast.l_paren),
                         .used_non_bool,
+                        .in_type,
                     ),
                     .utf16, .utf32, .wide => break :str,
                 };
@@ -3714,10 +3683,10 @@ fn transStringLiteral(
     used: ResultUsed,
 ) TransError!ZigNode {
     switch (literal.kind) {
-        .ascii => return t.transNarrowStringLiteral(expr, literal, .char, used),
-        .utf8 => return t.transNarrowStringLiteral(expr, literal, .u8, used),
+        .ascii => return t.transNarrowStringLiteral(expr, literal, .char, used, .in_type),
+        .utf8 => return t.transNarrowStringLiteral(expr, literal, .u8, used, .in_type),
         .utf16, .utf32, .wide => {
-            const array_type = try t.transTypeInit(scope, literal.qt, expr, literal.literal_tok);
+            const array_type = try t.transType(scope, literal.qt, literal.literal_tok);
             const lit_array = try t.transStringLiteralInitializer(expr, literal, array_type);
             const ref = try ZigTag.address_of.create(t.arena, lit_array);
             return t.finishExpr(literal.qt, used, ref);
@@ -3731,6 +3700,7 @@ fn transNarrowStringLiteral(
     literal: Node.CharLiteral,
     elem_type: ZigNode,
     used: ResultUsed,
+    sentinel: enum { in_type, as_elem },
 ) TransError!ZigNode {
     const val = t.tree.value_map.get(expr).?;
 
@@ -3741,14 +3711,24 @@ fn transNarrowStringLiteral(
     aro.Value.printString(bytes, literal.qt, t.comp, &allocating.writer, .quoted) catch return error.OutOfMemory;
 
     const str_node = try ZigTag.string_literal.create(t.arena, try t.arena.dupe(u8, allocating.written()));
-    if (elem_type.tag() == .u8_type or used == .unused) return t.finishExpr(literal.qt, used, str_node);
+    if ((elem_type.tag() == .u8_type or used == .unused) and sentinel == .in_type) {
+        return t.finishExpr(literal.qt, used, str_node);
+    }
+
+    const array_type = blk: {
+        var payload = try t.arena.create(ast.Payload.Array);
+        payload.* = .{ .base = .{ .tag = switch (sentinel) {
+            .as_elem => .array_type,
+            .in_type => .null_sentinel_array_type,
+        } }, .data = .{
+            .elem_type = elem_type,
+            .len = literal.qt.arrayLen(t.comp).? - @intFromBool(sentinel == .in_type),
+        } };
+        break :blk ZigNode.initPayload(&payload.base);
+    };
 
     const ptr_type = try ZigTag.single_pointer.create(t.arena, .{
-        .elem_type = try ZigTag.null_sentinel_array_type.create(t.arena, .{
-            .elem_type = elem_type,
-            // The length of the string literal excluding the sentinel.
-            .len = literal.qt.arrayLen(t.comp).? - 1,
-        }),
+        .elem_type = array_type,
         .is_const = true,
         .is_volatile = false,
         .is_allowzero = false,
@@ -3790,11 +3770,20 @@ fn transStringLiteralInitializer(
             .count = array_size,
         });
     }
+    const sentinel_as_elem = str_length + 1 == array_size and is_narrow;
 
     const init_node = if (is_narrow) blk: {
         // "string literal".* or string literal"[0..num_inits].*
-        var str = try t.transNarrowStringLiteral(expr, literal, elem_type, .used_non_bool);
-        if (str_length != array_size) str = try ZigTag.string_slice.create(t.arena, .{ .string = str, .end = num_inits });
+        var str = try t.transNarrowStringLiteral(
+            expr,
+            literal,
+            elem_type,
+            .used_non_bool,
+            if (sentinel_as_elem) .as_elem else .in_type,
+        );
+        if (str_length != array_size and !sentinel_as_elem) {
+            str = try ZigTag.string_slice.create(t.arena, .{ .string = str, .end = num_inits });
+        }
         break :blk try ZigTag.deref.create(t.arena, str);
     } else blk: {
         const size = literal.qt.childType(t.comp).sizeof(t.comp);
@@ -3822,7 +3811,7 @@ fn transStringLiteralInitializer(
         });
     };
 
-    if (num_inits == array_size) return init_node;
+    if (num_inits == array_size or sentinel_as_elem) return init_node;
     assert(array_size > str_length); // If array_size <= str_length, `num_inits == array_size` and we've already returned.
 
     const filler_node = try ZigTag.array_filler.create(t.arena, .{
@@ -3846,7 +3835,7 @@ fn transCompoundLiteral(
     // TODO taking a reference to a compound literal should result in a mutable
     // pointer (unless the literal is const).
 
-    const initializer = try t.transExpr(scope, literal.initializer, .coercedTo(t, literal.qt));
+    const initializer = try t.transInitializerExpr(scope, literal.initializer, literal.qt);
     const ty = try t.transType(scope, literal.qt, literal.l_paren_tok);
     if (!literal.thread_local and literal.storage_class != .static) {
         // In the simple case a compound literal can be translated
@@ -4029,7 +4018,7 @@ fn transInitializerExpr(
 ) TransError!ZigNode {
     switch (item.get(t.tree)) {
         .string_literal_expr => |literal| {
-            const array_type = try t.transTypeInit(scope, init_qt, item, literal.literal_tok);
+            const array_type = try t.transType(scope, init_qt, literal.literal_tok);
             return t.transStringLiteralInitializer(item, literal, array_type);
         },
         else => return t.transExpr(scope, item, .coercedTo(t, init_qt)),
@@ -4048,7 +4037,7 @@ fn transTypeInfo(
             if (t.unparenNode(expr, .string_literal_expr)) |pair| {
                 const literal, const index = pair;
                 const str = switch (literal.kind) {
-                    .ascii, .utf8 => try t.transNarrowStringLiteral(index, literal, .u8, .used_non_bool),
+                    .ascii, .utf8 => try t.transNarrowStringLiteral(index, literal, .u8, .used_non_bool, .in_type),
                     .utf16, .utf32, .wide => try t.transStringLiteral(scope, index, literal, .used_non_bool),
                 };
                 const deref = try ZigTag.deref.create(t.arena, str);

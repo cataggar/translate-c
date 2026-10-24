@@ -10,28 +10,28 @@ void foo() {
 // translate
 //
 // pub export fn foo() void {
-//     var a: [*c]wchar_t = @constCast(&([3:0]c_int{
+//     var a: [*c]wchar_t = @constCast(&([3]c_int{
 //         '\u{66}',
 //         '\u{6f}',
 //         '\u{6f}',
-//     }));
+//     } ++ @as([1]c_int, @splat(0))));
 //     _ = &a;
-//     var b: [3:0]wchar_t = [3:0]wchar_t{
+//     var b: [4]wchar_t = [3]wchar_t{
 //         '\u{66}',
 //         '\u{6f}',
 //         '\u{6f}',
-//     };
+//     } ++ @as([1]wchar_t, @splat(0));
 //     _ = &b;
-//     var c: [*c]const u32 = &([3:0]c_uint{
+//     var c: [*c]const u32 = &([3]c_uint{
 //         '\u{66}',
 //         '\u{6f}',
 //         '\u{6f}',
-//     });
+//     } ++ @as([1]c_uint, @splat(0)));
 //     _ = &c;
-//     var d: [3:0]u32 = [3:0]u32{
+//     var d: [4]u32 = [3]u32{
 //         '\u{66}',
 //         '\u{6f}',
 //         '\u{6f}',
-//     };
+//     } ++ @as([1]u32, @splat(0));
 //     _ = &d;
 // }

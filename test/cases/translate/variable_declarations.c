@@ -4,6 +4,6 @@ unsigned char arr2[] = "hello";
 
 // translate
 //
-// pub export var arr0: [5:0]u8 = "hello".*;
-// pub var arr1: [5:0]u8 = "hello".*;
-// pub export var arr2: [5:0]u8 = "hello".*;
+// pub export var arr0: [6]u8 = @as(*const [6]u8, @ptrCast("hello")).*;
+// pub var arr1: [6]u8 = @as(*const [6]u8, @ptrCast("hello")).*;
+// pub export var arr2: [6]u8 = @as(*const [6]u8, @ptrCast("hello")).*;
