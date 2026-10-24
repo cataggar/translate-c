@@ -12,6 +12,7 @@ void foo(char c) {
 }
 
 // translate
+// target = x86_64-linux-musl
 //
 // pub var a: c_long = 2;
 // pub var b: c_long = 2;

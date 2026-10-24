@@ -8,6 +8,7 @@ void foo() {
 }
 
 // translate
+// target = x86_64-linux-musl
 //
 // pub export fn foo() void {
 //     var a: [*c]wchar_t = @constCast(&([3]c_int{

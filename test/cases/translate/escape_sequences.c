@@ -15,6 +15,7 @@ const unsigned char *escapes() {
 
 
 // translate
+// target = x86_64-linux-musl
 //
 // pub export fn escapes() [*c]const u8 {
 //     var a: u8 = '\'';
