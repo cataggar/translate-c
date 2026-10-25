@@ -3151,7 +3151,7 @@ fn transVectorIndexAssign(
     if (used != .unused) {
         const break_node = try ZigTag.break_val.create(t.arena, .{
             .label = block_scope.label,
-            .val = new_node,
+            .val = try t.finishExpr(bin.qt, used, new_node),
         });
         try block_scope.statements.append(t.gpa, break_node);
     }
@@ -3197,7 +3197,7 @@ fn transIncDecExpr(
 
             const break_node = try ZigTag.break_val.create(t.arena, .{
                 .label = block_scope.label,
-                .val = ref_deref,
+                .val = try t.finishExpr(un.qt, used, ref_deref),
             });
             try block_scope.statements.append(t.gpa, break_node);
         },
@@ -3211,7 +3211,7 @@ fn transIncDecExpr(
             const tmp_ident = try ZigTag.identifier.create(t.arena, tmp);
             const break_node = try ZigTag.break_val.create(t.arena, .{
                 .label = block_scope.label,
-                .val = tmp_ident,
+                .val = try t.finishExpr(un.qt, used, tmp_ident),
             });
             try block_scope.statements.append(t.gpa, break_node);
         },
@@ -3814,7 +3814,8 @@ fn transCompoundLiteral(
     if (!literal.thread_local and literal.storage_class != .static) {
         // In the simple case a compound literal can be translated
         // simply as `@as(type, initializer)`.
-        return ZigTag.as.create(t.arena, .{ .lhs = ty, .rhs = initializer });
+        const as = try ZigTag.as.create(t.arena, .{ .lhs = ty, .rhs = initializer });
+        return t.finishExpr(literal.qt, used, as);
     }
 
     // Otherwise static or thread local compound literals are translated as
@@ -3850,7 +3851,7 @@ fn transCompoundLiteral(
     });
     const break_node = try ZigTag.break_val.create(t.arena, .{
         .label = block_scope.label,
-        .val = field_access,
+        .val = try t.finishExpr(literal.qt, used, field_access),
     });
     try block_scope.statements.append(t.gpa, break_node);
 
