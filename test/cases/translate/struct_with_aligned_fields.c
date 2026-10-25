@@ -20,11 +20,11 @@ struct over_aligned_array_padding {
 // };
 //
 // pub const struct_over_aligned_array_head = extern struct {
-//     bar: [4]f32 align(16) = @import("std").mem.zeroes([4]f32),
+//     bar: [4]f32 align(16) = __helpers.zeroes([4]f32),
 // };
 //
 // pub const struct_over_aligned_array_padding = extern struct {
 //     a: f32 align(16) = 0,
 //     b: c_short = 0,
-//     bar: [4]f32 align(16) = @import("std").mem.zeroes([4]f32),
+//     bar: [4]f32 align(16) = __helpers.zeroes([4]f32),
 // };

@@ -32,6 +32,6 @@ struct Foo {
 // };
 // 
 // pub const struct_Foo = extern struct {
-//     a: struct_A = @import("std").mem.zeroes(struct_A),
-//     b: union_B = @import("std").mem.zeroes(union_B),
+//     a: struct_A = __helpers.zeroes(struct_A),
+//     b: union_B = __helpers.zeroes(union_B),
 // };

@@ -14,6 +14,6 @@ void foo(void) {
 //     y: c_long,
 // };
 // pub export fn foo() void {
-//     var u: union_U = @import("std").mem.zeroes(union_U);
+//     var u: union_U = __helpers.zeroes(union_U);
 //     _ = &u;
 // }

@@ -5,6 +5,8 @@ const math = std.math;
 
 const helpers = @import("helpers");
 
+pub const Tag = std.meta.DeclEnum(helpers);
+
 const cast = helpers.cast;
 
 test cast {

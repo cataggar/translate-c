@@ -34,15 +34,15 @@ typedef struct { float x; } MyCStruct;
 //     return @"type";
 // }
 //
-// pub const LIGHTGRAY = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 200), @as(c_int, 200), @as(c_int, 200), @as(c_int, 255) });
-// pub const DARKGRAY = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 100), @as(c_int, 100), @as(c_int, 100), @as(c_int, 255) });
+// pub const LIGHTGRAY = __helpers.zeroInit(CLITERAL(Color), .{ @as(c_int, 200), @as(c_int, 200), @as(c_int, 200), @as(c_int, 255) });
+// pub const DARKGRAY = __helpers.zeroInit(CLITERAL(Color), .{ @as(c_int, 100), @as(c_int, 100), @as(c_int, 100), @as(c_int, 255) });
 //
 // pub const struct_boom_t = extern struct {
 //     i1: c_int = 0,
 // };
 // pub const boom_t = struct_boom_t;
 //
-// pub const FOO = @import("std").mem.zeroInit(boom_t, .{@as(c_int, 1)});
+// pub const FOO = __helpers.zeroInit(boom_t, .{@as(c_int, 1)});
 //
 // pub const MyCStruct = extern struct {
 //     x: f32 = 0,
@@ -50,14 +50,14 @@ typedef struct { float x; } MyCStruct;
 //
 // pub inline fn A(_x: anytype) MyCStruct {
 //     _ = &_x;
-//     return @import("std").mem.zeroInit(MyCStruct, .{
+//     return __helpers.zeroInit(MyCStruct, .{
 //         .x = _x,
 //     });
 // }
 //
 // pub inline fn A2(_x: anytype) MyCStruct {
 //     _ = &_x;
-//     return @import("std").mem.zeroInit(MyCStruct, .{
+//     return __helpers.zeroInit(MyCStruct, .{
 //         .x = _x,
 //     });
 // }

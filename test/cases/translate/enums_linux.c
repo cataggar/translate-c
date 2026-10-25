@@ -40,8 +40,8 @@ enum i {
 // pub const k: c_int = 2;
 // const enum_unnamed_2 = c_uint;
 // pub const struct_Baz = extern struct {
-//     l: enum_unnamed_2 = @import("std").mem.zeroes(enum_unnamed_2),
-//     m: d = @import("std").mem.zeroes(d),
+//     l: enum_unnamed_2 = __helpers.zeroes(enum_unnamed_2),
+//     m: d = __helpers.zeroes(d),
 // };
 // pub const n: c_int = 0;
 // pub const o: c_int = 1;

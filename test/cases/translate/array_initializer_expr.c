@@ -63,4 +63,4 @@ char a[2][8] = {"start"};
 //
 // pub export var a: [2][8]u8 = [1][8]u8{
 //     "start"[0..5].* ++ @as([3]u8, @splat(0)),
-// } ++ @as([1][8]u8, @splat(@import("std").mem.zeroes([8]u8)));
+// } ++ @as([1][8]u8, @splat(__helpers.zeroes([8]u8)));

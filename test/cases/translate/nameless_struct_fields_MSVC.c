@@ -18,7 +18,7 @@ typedef struct ONENAMEWITHSTRUCT
 // };
 // pub const NAMED = struct_NAMED;
 // pub const struct_ONENAMEWITHSTRUCT = extern struct {
-//     unnamed_0: NAMED = @import("std").mem.zeroes(NAMED),
+//     unnamed_0: NAMED = __helpers.zeroes(NAMED),
 //     b: c_long = 0,
 // };
 // pub const ONENAMEWITHSTRUCT = struct_ONENAMEWITHSTRUCT;

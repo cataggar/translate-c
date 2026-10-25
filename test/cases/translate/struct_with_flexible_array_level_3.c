@@ -8,7 +8,7 @@ struct d { int x; int y[2]; };
 //
 // pub const struct_a = extern struct {
 //     x: c_int = 0,
-//     _y: [0]c_int = @import("std").mem.zeroes([0]c_int),
+//     _y: [0]c_int = __helpers.zeroes([0]c_int),
 //     pub fn y(_self: anytype) __helpers.FlexibleArrayType(@TypeOf(_self), @typeInfo(@TypeOf(_self.*._y)).array.child) {
 //         return @ptrCast(@alignCast(&_self.*._y));
 //     }
@@ -16,15 +16,15 @@ struct d { int x; int y[2]; };
 //
 // pub const struct_b = extern struct {
 //     x: c_int = 0,
-//     y: [0]c_int = @import("std").mem.zeroes([0]c_int),
+//     y: [0]c_int = __helpers.zeroes([0]c_int),
 // };
 //
 // pub const struct_c = extern struct {
 //     x: c_int = 0,
-//     y: [1]c_int = @import("std").mem.zeroes([1]c_int),
+//     y: [1]c_int = __helpers.zeroes([1]c_int),
 // };
 //
 // pub const struct_d = extern struct {
 //     x: c_int = 0,
-//     y: [2]c_int = @import("std").mem.zeroes([2]c_int),
+//     y: [2]c_int = __helpers.zeroes([2]c_int),
 // };

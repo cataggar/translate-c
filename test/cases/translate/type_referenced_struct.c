@@ -15,5 +15,5 @@ struct Foo {
 //     b: c_int = 0,
 // };
 // pub const struct_Foo = extern struct {
-//     c: struct_Bar_1 = @import("std").mem.zeroes(struct_Bar_1),
+//     c: struct_Bar_1 = __helpers.zeroes(struct_Bar_1),
 // };

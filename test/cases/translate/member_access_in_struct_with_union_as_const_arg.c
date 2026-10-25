@@ -19,7 +19,7 @@ int my_func(const struct my_struct* s) {
 //     d: f64,
 // };
 // pub const struct_my_struct = extern struct {
-//     unnamed_0: union_unnamed_1 = @import("std").mem.zeroes(union_unnamed_1),
+//     unnamed_0: union_unnamed_1 = __helpers.zeroes(union_unnamed_1),
 //     pub const my_func = __root.my_func;
 //     pub const func = __root.my_func;
 // };

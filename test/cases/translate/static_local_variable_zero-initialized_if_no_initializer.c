@@ -13,7 +13,7 @@ int bar(void) {
 // };
 // pub export fn bar() c_int {
 //     const static_local_foo = struct {
-//         var foo: struct_FOO = @import("std").mem.zeroes(struct_FOO);
+//         var foo: struct_FOO = __helpers.zeroes(struct_FOO);
 //     };
 //     _ = &static_local_foo;
 //     return static_local_foo.foo.x;

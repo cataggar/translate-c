@@ -1,5 +1,8 @@
 const std = @import("std");
 
+pub const zeroes = std.mem.zeroes;
+pub const zeroInit = std.mem.zeroInit;
+
 /// "Usual arithmetic conversions" from C11 standard 6.3.1.8
 pub fn ArithmeticConversion(comptime A: type, comptime B: type) type {
     if (A == c_longdouble or B == c_longdouble) return c_longdouble;

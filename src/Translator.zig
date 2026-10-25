@@ -4193,7 +4193,7 @@ fn createZeroValueNode(
         },
         else => {},
     }
-    return try ZigTag.std_mem_zeroes.create(t.arena, type_node);
+    return t.createHelperCallNode(.zeroes, &.{type_node});
 }
 
 fn createIntNode(t: *Translator, int: aro.Value) !ZigNode {
@@ -4239,14 +4239,14 @@ fn createBinOpNode(
     return ZigNode.initPayload(&payload.base);
 }
 
-pub fn createHelperCallNode(t: *Translator, name: std.meta.DeclEnum(@import("helpers")), args_opt: ?[]const ZigNode) !ZigNode {
+pub fn createHelperCallNode(t: *Translator, name: helpers.Tag, args_opt: ?[]const ZigNode) !ZigNode {
     if (args_opt) |args| {
         return ZigTag.helper_call.create(t.arena, .{
-            .name = @tagName(name),
+            .name = name,
             .args = try t.arena.dupe(ZigNode, args),
         });
     } else {
-        return ZigTag.helper_ref.create(t.arena, @tagName(name));
+        return ZigTag.helper_ref.create(t.arena, name);
     }
 }
 

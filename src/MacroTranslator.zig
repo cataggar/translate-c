@@ -106,13 +106,13 @@ pub fn transFnMacro(mt: *MacroTranslator) ParseError!void {
     } else expr;
 
     const return_type = ret: {
-        if (typeof_arg.castTag(.helper_call)) |some| {
-            if (std.mem.eql(u8, some.data.name, "cast")) {
-                break :ret some.data.args[0];
-            }
-        }
-        if (typeof_arg.castTag(.std_mem_zeroinit)) |some| break :ret some.data.lhs;
-        if (typeof_arg.castTag(.std_mem_zeroes)) |some| break :ret some.data;
+        if (typeof_arg.castTag(.helper_call)) |call| switch (call.data.name) {
+            .cast,
+            .zeroes,
+            .zeroInit,
+            => break :ret call.data.args[0],
+            else => {},
+        };
         break :ret try ZigTag.typeof.create(mt.t.arena, typeof_arg);
     };
 
@@ -1291,7 +1291,7 @@ fn parseCPostfixExprInner(mt: *MacroTranslator, scope: *Scope, type_name: ?ZigNo
                         }
                     }
                     const tuple_node = try ZigTag.container_init_dot.create(arena, try arena.dupe(ast.Payload.ContainerInitDot.Initializer, init_vals.items));
-                    node = try ZigTag.std_mem_zeroinit.create(arena, .{ .lhs = node, .rhs = tuple_node });
+                    node = try mt.t.createHelperCallNode(.zeroInit, &.{ node, tuple_node });
                     continue;
                 }
 
@@ -1323,7 +1323,7 @@ fn parseCPostfixExprInner(mt: *MacroTranslator, scope: *Scope, type_name: ?ZigNo
                     }
                 }
                 const tuple_node = try ZigTag.tuple.create(arena, try arena.dupe(ZigNode, init_vals.items));
-                node = try ZigTag.std_mem_zeroinit.create(arena, .{ .lhs = node, .rhs = tuple_node });
+                node = try mt.t.createHelperCallNode(.zeroInit, &.{ node, tuple_node });
             },
             .plus_plus, .minus_minus => {
                 try mt.fail("TODO postfix inc/dec expr", .{});

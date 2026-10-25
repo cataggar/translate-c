@@ -1,5 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const helpers = @import("helpers.zig");
 
 pub const Node = extern union {
     /// If the tag value is less than Tag.no_payload_count, then no pointer
@@ -219,10 +220,6 @@ pub const Node = extern union {
 
         /// @Vector(lhs, rhs)
         vector,
-        /// @import("std").mem.zeroes(operand)
-        std_mem_zeroes,
-        /// @import("std").mem.zeroInit(lhs, rhs)
-        std_mem_zeroinit,
         // pub const name = @compileError(msg);
         fail_decl,
         // var actual = mangled;
@@ -273,7 +270,6 @@ pub const Node = extern union {
                 .@"unreachable",
                 => @compileError("Type Tag " ++ @tagName(t) ++ " has no payload"),
 
-                .std_mem_zeroes,
                 .@"return",
                 .@"comptime",
                 .@"defer",
@@ -367,7 +363,6 @@ pub const Node = extern union {
                 .ellipsis3,
                 .assign,
                 .array_access,
-                .std_mem_zeroinit,
                 .vector,
                 .div_exact,
                 .static_assert,
@@ -812,14 +807,14 @@ pub const Payload = struct {
     pub const HelperCall = struct {
         base: Payload,
         data: struct {
-            name: []const u8,
+            name: helpers.Tag,
             args: []const Node,
         },
     };
 
     pub const HelperRef = struct {
         base: Payload,
-        data: []const u8,
+        data: helpers.Tag,
     };
 
     pub const RootRef = struct {
@@ -1012,16 +1007,6 @@ fn renderNode(c: *Context, node: Node) Allocator.Error!NodeIndex {
                     } },
                 });
             }
-        },
-        .std_mem_zeroes => {
-            const payload = node.castTag(.std_mem_zeroes).?.data;
-            const import_node = try renderStdImport(c, &.{ "mem", "zeroes" });
-            return renderCall(c, import_node, &.{payload});
-        },
-        .std_mem_zeroinit => {
-            const payload = node.castTag(.std_mem_zeroinit).?.data;
-            const import_node = try renderStdImport(c, &.{ "mem", "zeroInit" });
-            return renderCall(c, import_node, &.{ payload.lhs, payload.rhs });
         },
         .vector => {
             const payload = node.castTag(.vector).?.data;
@@ -1493,7 +1478,7 @@ fn renderNode(c: *Context, node: Node) Allocator.Error!NodeIndex {
                 .main_token = try c.addIdentifier("__helpers"),
                 .data = undefined,
             });
-            const func = try renderFieldAccess(c, helpers_tok, payload.name);
+            const func = try renderFieldAccess(c, helpers_tok, @tagName(payload.name));
             return renderCall(c, func, payload.args);
         },
         .helper_ref => {
@@ -1503,7 +1488,7 @@ fn renderNode(c: *Context, node: Node) Allocator.Error!NodeIndex {
                 .main_token = try c.addIdentifier("__helpers"),
                 .data = undefined,
             });
-            return renderFieldAccess(c, helpers_tok, payload);
+            return renderFieldAccess(c, helpers_tok, @tagName(payload));
         },
         .alignof => {
             const payload = node.castTag(.alignof).?.data;
@@ -2474,14 +2459,12 @@ fn renderNodeGrouped(c: *Context, node: Node) !NodeIndex {
         .int_from_float,
         .float_from_int,
         .ptr_from_int,
-        .std_mem_zeroes,
         .int_from_ptr,
         .sizeof,
         .alignof,
         .typeof,
         .typeinfo,
         .vector,
-        .std_mem_zeroinit,
         .integer_literal,
         .float_literal,
         .string_literal,
