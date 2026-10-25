@@ -4,6 +4,9 @@ typedef enum {
     f32,
     u32,
 } BadEnum;
+int panic(void) {
+    return 0;
+}
 
 // translate
 //
@@ -13,3 +16,7 @@ typedef enum {
 //
 // pub const @"f32": c_int = 0;
 // pub const @"u32": c_int = 1;
+//
+// export fn panic() c_int {
+//     return 0;
+// }

@@ -647,7 +647,7 @@ fn transRecordDecl(t: *Translator, scope: *Scope, record_qt: QualType) Error!voi
     if (!toplevel) name = try bs.makeMangledName(name);
     try t.container_types.putNoClobber(t.gpa, base.qt.unqualified(), name);
 
-    const is_pub = toplevel and !is_unnamed;
+    const is_pub = toplevel and !is_unnamed and !mem.eql(u8, name, "panic");
     const init_node = init: {
         if (record_ty.layout == null) {
             try t.opaque_demotes.put(t.gpa, base.qt, {});
@@ -826,7 +826,7 @@ fn transFnDecl(t: *Translator, scope: *Scope, function: Node.Function, decl_node
         .is_always_inline = is_always_inline,
         .is_extern = !has_body,
         .is_export = !function.static and has_body and !is_always_inline and !function.@"inline" and linkage == .strong,
-        .is_pub = scope.id == .root and (!function.static or t.pub_static),
+        .is_pub = scope.id == .root and (!function.static or t.pub_static) and !mem.eql(u8, fn_name, "panic"),
         .has_body = has_body,
         .cc = if (is_always_inline) .c else t.transCallingConvention(func_ty.cc) catch
             return t.failDecl(scope, fn_decl_loc, fn_name, "TODO {s}", .{@tagName(func_ty.cc)}),
@@ -1009,7 +1009,7 @@ fn transVarDecl(t: *Translator, scope: *Scope, variable: Node.Variable, decl_nod
     }
 
     var node = try ZigTag.var_decl.create(t.arena, .{
-        .is_pub = toplevel,
+        .is_pub = toplevel and !mem.eql(u8, name, "panic"),
         .is_const = is_const and !self_referential,
         .is_extern = is_extern,
         .is_export = toplevel and variable.storage_class == .auto and linkage == .strong,
@@ -1113,7 +1113,7 @@ fn transEnumDecl(t: *Translator, scope: *Scope, enum_qt: QualType) Error!void {
             const val = t.tree.value_map.get(field_node).?;
             const enum_const_def = try ZigTag.enum_constant.create(t.arena, .{
                 .name = enum_val_name,
-                .is_public = toplevel,
+                .is_public = toplevel and !mem.eql(u8, enum_val_name, "panic"),
                 .type = enum_const_type_node,
                 .value = try t.createIntNode(val),
             });
@@ -1136,7 +1136,7 @@ fn transEnumDecl(t: *Translator, scope: *Scope, enum_qt: QualType) Error!void {
         break :blk ZigTag.opaque_literal.init();
     };
 
-    const is_pub = toplevel and !is_unnamed;
+    const is_pub = toplevel and !is_unnamed and !mem.eql(u8, name, "panic");
     const payload = try t.arena.create(ast.Payload.SimpleVarDecl);
     payload.* = .{
         .base = .{ .tag = if (is_pub) .pub_var_simple else .var_simple },
