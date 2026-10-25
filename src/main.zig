@@ -400,6 +400,9 @@ fn translate(
         }
     }
 
+    // Assume that we are going to be translating a header
+    try d.diagnostics.set("pragma-once-outside-header", .off);
+
     var tc_opts: aro.Toolchain.Options = .{};
     const user_macros = macros: {
         var macro_buf: std.ArrayList(u8) = .empty;
