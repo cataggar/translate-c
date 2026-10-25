@@ -3443,7 +3443,7 @@ fn transBuiltinCall(
         return t.finishExpr(call.qt, used, res);
     }
 
-    const builtin = builtins.map.get(builtin_name) orelse
+    const builtin = builtins.get(t.comp, builtin_name) orelse
         return t.fail(error.UnsupportedTranslation, call.builtin_tok, "TODO implement function '{s}' in std.zig.c_builtins", .{builtin_name});
 
     if (builtin.tag) |tag| switch (tag) {
@@ -3477,16 +3477,15 @@ fn transBuiltinCall(
         zig_arg.* = try t.transExpr(scope, c_arg, .usedAs(t, c_arg.qt(t.tree)));
     }
 
-    const builtin_identifier = try ZigTag.identifier.create(t.arena, "__builtin");
-    const field_access = try ZigTag.field_access.create(t.arena, .{
-        .lhs = builtin_identifier,
-        .field_name = builtin.name,
+    const ref = try ZigTag.builtin_ref.create(t.arena, .{
+        .name = builtin.name,
+        .lib_name = builtin.lib_name,
     });
-
     const res = try ZigTag.call.create(t.arena, .{
-        .lhs = field_access,
+        .lhs = ref,
         .args = arg_nodes,
     });
+
     if (call.qt.is(t.comp, .void)) return res;
     return t.finishExpr(call.qt, used, res);
 }
@@ -4447,9 +4446,10 @@ fn checkTranslatableMacro(t: *Translator, tokens: []const CToken, params: []cons
             },
             .identifier, .extended_identifier => {
                 const identifier = t.pp.tokSlice(token);
-                if (!t.global_scope.contains(identifier) and !builtins.map.has(identifier)) {
-                    return .{ .undefined_identifier = identifier };
-                }
+                if (t.global_scope.contains(identifier)) continue;
+                if (builtins.get(t.comp, identifier) != null) continue;
+
+                return .{ .undefined_identifier = identifier };
             },
             else => {},
         }

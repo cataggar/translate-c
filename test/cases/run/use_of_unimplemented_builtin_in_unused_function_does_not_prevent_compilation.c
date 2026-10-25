@@ -1,4 +1,4 @@
-// See __builtin_alloca_with_align comment in lib/c_builtins.zig
+// See __builtin_alloca_with_align comment in builtins.zig
 #include <stdlib.h>
 void unused() {
     __builtin_alloca_with_align(1, 8);

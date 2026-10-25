@@ -1,5 +1,7 @@
 const std = @import("std");
 
+pub const c = std.c;
+
 /// Standard C Library bug: The absolute value of the most negative integer remains negative.
 pub inline fn abs(val: c_int) c_int {
     return if (val == std.math.minInt(c_int)) val else @intCast(@abs(val));
@@ -78,10 +80,10 @@ pub inline fn exp(val: f64) f64 {
     return @exp(val);
 }
 
-/// The return value of __builtin_expect is `expr`. `c` is the expected value
+/// The return value of __builtin_expect is `expr`. `val` is the expected value
 /// of `expr` and is used as a hint to the compiler in C. Here it is unused.
-pub inline fn expect(expr: c_long, c: c_long) c_long {
-    _ = c;
+pub inline fn expect(expr: c_long, val: c_long) c_long {
+    _ = val;
     return expr;
 }
 
@@ -151,15 +153,15 @@ pub inline fn elementwise_ctzg(x: anytype, y: anytype) @TypeOf(x, y) {
     }
 }
 
-pub inline fn elementwise_fshl(a: anytype, b: anytype, c: anytype) @TypeOf(a, b, c) {
-    switch (@typeInfo(@TypeOf(a, b, c))) {
+pub inline fn elementwise_fshl(x: anytype, y: anytype, z: anytype) @TypeOf(x, y, z) {
+    switch (@typeInfo(@TypeOf(x, y, z))) {
         .int => |int| {
             const U = @Int(.unsigned, int.bits);
-            const lhs: U = @bitCast(a);
-            const rhs: U = @bitCast(b);
+            const lhs: U = @bitCast(x);
+            const rhs: U = @bitCast(y);
             const bits = @bitSizeOf(U);
-            const shift = @as(U, @bitCast(c)) % bits;
-            if (shift == 0) return a;
+            const shift = @as(U, @bitCast(z)) % bits;
+            if (shift == 0) return x;
 
             const inverse_shift: U = @as(U, bits) - shift;
             const result: U = (lhs << @intCast(shift)) | (rhs >> @intCast(inverse_shift));
@@ -168,11 +170,11 @@ pub inline fn elementwise_fshl(a: anytype, b: anytype, c: anytype) @TypeOf(a, b,
         .vector => |vector| {
             const Elem = @Int(.unsigned, @bitSizeOf(vector.child));
             const U = @Vector(vector.len, Elem);
-            const lhs: U = @bitCast(a);
-            const rhs: U = @bitCast(b);
+            const lhs: U = @bitCast(x);
+            const rhs: U = @bitCast(y);
             const bits: U = @splat(@bitSizeOf(vector.child));
             const zero: U = @splat(0);
-            const shift = @as(U, @bitCast(c)) % bits;
+            const shift = @as(U, @bitCast(z)) % bits;
             const inverse_shift = @select(Elem, shift == zero, zero, bits - shift);
 
             const rhs_term = @select(Elem, shift == zero, zero, rhs >> @intCast(inverse_shift));
@@ -183,15 +185,15 @@ pub inline fn elementwise_fshl(a: anytype, b: anytype, c: anytype) @TypeOf(a, b,
     }
 }
 
-pub inline fn elementwise_fshr(a: anytype, b: anytype, c: anytype) @TypeOf(a, b, c) {
-    switch (@typeInfo(@TypeOf(a, b, c))) {
+pub inline fn elementwise_fshr(x: anytype, y: anytype, z: anytype) @TypeOf(x, y, z) {
+    switch (@typeInfo(@TypeOf(x, y, z))) {
         .int => |int| {
             const U = @Int(.unsigned, int.bits);
-            const lhs: U = @bitCast(a);
-            const rhs: U = @bitCast(b);
+            const lhs: U = @bitCast(x);
+            const rhs: U = @bitCast(y);
             const bits = @bitSizeOf(U);
-            const shift = @as(U, @bitCast(c)) % bits;
-            if (shift == 0) return b;
+            const shift = @as(U, @bitCast(z)) % bits;
+            if (shift == 0) return y;
 
             const inverse_shift: U = @as(U, bits) - shift;
             const result: U = (lhs << @intCast(inverse_shift)) | (rhs >> @intCast(shift));
@@ -200,11 +202,11 @@ pub inline fn elementwise_fshr(a: anytype, b: anytype, c: anytype) @TypeOf(a, b,
         .vector => |vector| {
             const Elem = @Int(.unsigned, @bitSizeOf(vector.child));
             const U = @Vector(vector.len, Elem);
-            const lhs: U = @bitCast(a);
-            const rhs: U = @bitCast(b);
+            const lhs: U = @bitCast(x);
+            const rhs: U = @bitCast(y);
             const bits: U = @splat(@bitSizeOf(vector.child));
             const zero: U = @splat(0);
-            const shift = @as(U, @bitCast(c)) % bits;
+            const shift = @as(U, @bitCast(z)) % bits;
             const inverse_shift = @select(Elem, shift == zero, zero, bits - shift);
 
             const lhs_term = @select(Elem, shift == zero, zero, lhs << @intCast(inverse_shift));

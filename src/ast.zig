@@ -1,5 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const builtins = @import("builtins.zig");
 const helpers = @import("helpers.zig");
 
 pub const Node = extern union {
@@ -189,6 +190,8 @@ pub const Node = extern union {
         helper_call,
         /// __helpers.<name>
         helper_ref,
+        /// __builtin.<name>
+        builtin_ref,
 
         asm_simple,
 
@@ -404,6 +407,7 @@ pub const Node = extern union {
                 .string_slice => Payload.StringSlice,
                 .shuffle => Payload.Shuffle,
                 .builtin_extern => Payload.Extern,
+                .builtin_ref => Payload.BuiltinRef,
                 .helper_call => Payload.HelperCall,
                 .helper_ref => Payload.HelperRef,
                 .root_ref => Payload.RootRef,
@@ -801,6 +805,14 @@ pub const Payload = struct {
         data: struct {
             type: Node,
             name: Node,
+        },
+    };
+
+    pub const BuiltinRef = struct {
+        base: Payload,
+        data: struct {
+            name: builtins.CustomFunction,
+            lib_name: ?builtins.LibFunction,
         },
     };
 
@@ -1470,6 +1482,17 @@ fn renderNode(c: *Context, node: Node) Allocator.Error!NodeIndex {
                 payload.type,
                 .{ .ptr_otherwise = &info_payload.base },
             });
+        },
+        .builtin_ref => {
+            const payload = node.castTag(.builtin_ref).?.data;
+            const helpers_tok = try c.addNode(.{
+                .tag = .identifier,
+                .main_token = try c.addIdentifier("__builtin"),
+                .data = undefined,
+            });
+            const field_access = try renderFieldAccess(c, helpers_tok, @tagName(payload.name));
+            const lib_name = payload.lib_name orelse return field_access;
+            return renderFieldAccess(c, field_access, @tagName(lib_name));
         },
         .helper_call => {
             const payload = node.castTag(.helper_call).?.data;
@@ -2494,6 +2517,7 @@ fn renderNodeGrouped(c: *Context, node: Node) !NodeIndex {
         .div_exact,
         .shuffle,
         .builtin_extern,
+        .builtin_ref,
         .wrapped_local,
         .helper_call,
         .helper_ref,

@@ -584,11 +584,13 @@ fn parseCPrimaryExpr(mt: *MacroTranslator, scope: *Scope) ParseError!ZigNode {
             if (Translator.builtin_typedef_map.get(mangled_name)) |ty| {
                 return ZigTag.type.create(arena, ty);
             }
-            if (builtins.map.get(mangled_name)) |builtin| {
-                const builtin_identifier = try ZigTag.identifier.create(arena, "__builtin");
-                return ZigTag.field_access.create(arena, .{
-                    .lhs = builtin_identifier,
-                    .field_name = builtin.name,
+            if (builtins.get(mt.t.comp, mangled_name)) |builtin| builtin: {
+                if (builtin.lib_name != null and mt.t.global_scope.contains(mangled_name)) {
+                    break :builtin; // Prefer referencing explicitly translated declarations
+                }
+                return ZigTag.builtin_ref.create(arena, .{
+                    .name = builtin.name,
+                    .lib_name = builtin.lib_name,
                 });
             }
 
@@ -948,11 +950,13 @@ fn parseCSpecifierQualifierList(mt: *MacroTranslator, scope: *Scope) ParseError!
                 if (Translator.builtin_typedef_map.get(mangled_name)) |ty| {
                     return try ZigTag.type.create(mt.t.arena, ty);
                 }
-                if (builtins.map.get(mangled_name)) |builtin| {
-                    const builtin_identifier = try ZigTag.identifier.create(mt.t.arena, "__builtin");
-                    return try ZigTag.field_access.create(mt.t.arena, .{
-                        .lhs = builtin_identifier,
-                        .field_name = builtin.name,
+                if (builtins.get(mt.t.comp, mangled_name)) |builtin| builtin: {
+                    if (builtin.lib_name != null and mt.t.global_scope.contains(mangled_name)) {
+                        break :builtin; // Prefer referencing explicitly translated declarations
+                    }
+                    return try ZigTag.builtin_ref.create(mt.t.arena, .{
+                        .name = builtin.name,
+                        .lib_name = builtin.lib_name,
                     });
                 }
 
