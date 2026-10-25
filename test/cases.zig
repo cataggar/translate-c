@@ -69,7 +69,7 @@ pub fn lowerCases(
         if (entry.kind != .file) continue;
         const case = caseFromFile(b, entry) catch |err|
             std.debug.panic("failed to process case '{s}': {s}", .{ entry.path, @errorName(err) });
-        b.dependOnFileContents(b.path(b.pathJoin(&.{ "test/cases", entry.path })));
+        b.dependOnFileContents(b.graph.cwdRelativePath(b.pathJoin(&.{ "test/cases", entry.path })));
 
         if (test_filters.len > 0) {
             for (test_filters) |filter| {
