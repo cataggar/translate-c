@@ -2423,8 +2423,8 @@ fn transExpr(t: *Translator, scope: *Scope, expr: Node.Index, used: ResultUsed) 
         .struct_init_expr => |struct_init| return t.transStructInit(scope, struct_init, used),
         .array_filler_expr => unreachable,
 
-        .sizeof_expr => |sizeof| try t.transTypeInfo(scope, .sizeof, sizeof),
-        .alignof_expr => |alignof| try t.transTypeInfo(scope, .alignof, alignof),
+        .sizeof_expr => |sizeof| return t.transTypeInfo(scope, .sizeof, sizeof, used),
+        .alignof_expr => |alignof| return t.transTypeInfo(scope, .alignof, alignof, used),
 
         .imag_expr, .real_expr => |un| {
             return t.fail(error.UnsupportedTranslation, un.op_tok, "TODO complex numbers", .{});
@@ -4004,6 +4004,7 @@ fn transTypeInfo(
     scope: *Scope,
     op: ZigTag,
     typeinfo: Node.TypeInfo,
+    used: ResultUsed,
 ) TransError!ZigNode {
     const operand = operand: {
         if (typeinfo.expr) |expr| {
@@ -4027,7 +4028,14 @@ fn transTypeInfo(
         .base = .{ .tag = op },
         .data = operand,
     };
-    return ZigNode.initPayload(&payload.base);
+    const info_node = ZigNode.initPayload(&payload.base);
+    if (used != .used) return t.finishExpr(typeinfo.qt, used, info_node);
+
+    const as = try ZigTag.as.create(t.arena, .{
+        .lhs = try ZigTag.type.create(t.arena, "usize"),
+        .rhs = info_node,
+    });
+    return t.finishExpr(typeinfo.qt, used, as);
 }
 
 fn transStmtExpr(

@@ -1,6 +1,8 @@
+#include <stddef.h>
+
 int *a = (int*)(&a + 1); // TODO result missing casts
 
-extern void *alloc(unsigned long long);
+extern void *alloc(size_t);
 void foo(void) {
     int b = b + 1;
     int *c = alloc(sizeof(*c));
@@ -10,7 +12,7 @@ void foo(void) {
 // translate
 //
 // pub export var a: [*c]c_int = @ptrCast(@alignCast((&a) + @as(usize, @bitCast(@as(isize, @intCast(@as(c_int, 1)))))));
-// pub extern fn alloc(c_ulonglong) ?*anyopaque;
+// pub extern fn alloc(usize) ?*anyopaque;
 // pub export fn foo() void {
 //     var b: c_int = undefined;
 //     b = b + @as(c_int, 1);

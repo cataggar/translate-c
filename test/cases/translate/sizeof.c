@@ -7,7 +7,19 @@ size_t size_of_expr(void) {
 }
 #define sizeof_macro(x) sizeof(x)
 
+extern void func(int i, ...);
+void foo() {
+    func(0, sizeof(int));
+}
+
+void maxsize(int negative){
+    static char const min[] = "-9223372036854775808";
+    static char const max[] = "9223372036854775807";
+    unsigned int const maxdigits = (negative ? sizeof(min): sizeof(max));
+}
+
 // translate
+// target = x86_64-linux
 //
 // pub export fn size_of() usize {
 //     return @sizeOf(c_int);
@@ -20,4 +32,23 @@ size_t size_of_expr(void) {
 // pub inline fn sizeof_macro(x: anytype) @TypeOf(__helpers.sizeof(x)) {
 //     _ = &x;
 //     return __helpers.sizeof(x);
+// }
+//
+// pub export fn foo() void {
+//     func(0, @as(usize, @sizeOf(c_int)));
+// }
+//
+// pub export fn maxsize(arg_negative: c_int) void {
+//     var negative = arg_negative;
+//     _ = &negative;
+//     const static_local_min = struct {
+//         const min: [20:0]u8 = "-9223372036854775808".*;
+//     };
+//     _ = &static_local_min;
+//     const static_local_max = struct {
+//         const max: [19:0]u8 = "9223372036854775807".*;
+//     };
+//     _ = &static_local_max;
+//     const maxdigits: c_uint = @truncate(if (negative != 0) @as(usize, @sizeOf(@TypeOf(static_local_min.min))) else @as(usize, @sizeOf(@TypeOf(static_local_max.max))));
+//     _ = &maxdigits;
 // }
