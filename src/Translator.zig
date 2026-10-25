@@ -575,7 +575,17 @@ fn transTypeDef(t: *Translator, scope: *Scope, typedef_node: Node.Index) Error!v
     var name: []const u8 = t.tree.tokSlice(typedef_decl.name_tok);
     try t.typedefs.put(t.gpa, name, {});
 
-    if (builtin_typedef_map.has(name)) return;
+    if (builtin_typedef_map.get(name)) |builtin| {
+        if (toplevel) try t.addTopLevelDecl(
+            name,
+            try ZigTag.pub_var_simple.create(t.arena, .{
+                .name = name,
+                .init = builtin,
+            }),
+        );
+
+        return;
+    }
     if (!toplevel) name = try bs.makeMangledName(name);
     try t.typedef_decls.putNoClobber(t.gpa, typedef_node, name);
 
