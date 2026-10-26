@@ -31,7 +31,7 @@ const char *s2 = (const char [3]){"abc"};
 // };
 // pub export var a2: [2][4]c_char = [2][4]c_char{
 //     @as(*const [4]c_char, @ptrCast("r<=")).*,
-//     @as(*const [2:0]c_char, @ptrCast("r="))[0..2].* ++ @as([2]c_char, @splat(0)),
+//     @as(*const [2:0]c_char, @ptrCast("r=")).* ++ @as([2]c_char, @splat(0)),
 // };
 //
 // pub export var s1: [*c]const c_char = @ptrCast(@alignCast(&@as([4]c_char, @as(*const [4]c_char, @ptrCast("abc")).*)));

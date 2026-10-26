@@ -32,7 +32,7 @@ uint32_t no_null_w[3] = U"💯💯💯";
 // pub export var truncated_w: [1]u32 = [1]u32{
 //     '\u{1f4af}',
 // };
-// pub export var extend: [5]c_char = @as(*const [1:0]c_char, @ptrCast("a"))[0..1].* ++ @as([4]c_char, @splat(0));
+// pub export var extend: [5]c_char = @as(*const [1:0]c_char, @ptrCast("a")).* ++ @as([4]c_char, @splat(0));
 // pub export var extend_w: [5]u32 = [1]u32{
 //     '\u{1f4af}',
 // } ++ @as([4]u32, @splat(0));

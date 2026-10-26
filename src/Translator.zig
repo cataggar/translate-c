@@ -3791,7 +3791,7 @@ fn transStringLiteralInitializer(
             .used_non_bool,
             if (sentinel_as_elem) .as_elem else .in_type,
         );
-        if (str_length != array_size and !sentinel_as_elem) {
+        if (str_length != num_inits and !sentinel_as_elem) {
             str = try ZigTag.string_slice.create(t.arena, .{ .string = str, .end = num_inits });
         }
         break :blk try ZigTag.deref.create(t.arena, str);
