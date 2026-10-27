@@ -42,11 +42,11 @@ void maxsize(int negative){
 //     var negative = arg_negative;
 //     _ = &negative;
 //     const static_local_min = struct {
-//         const min: [20:0]u8 = "-9223372036854775808".*;
+//         const min: [21]c_char = @as(*const [21]c_char, @ptrCast("-9223372036854775808")).*;
 //     };
 //     _ = &static_local_min;
 //     const static_local_max = struct {
-//         const max: [19:0]u8 = "9223372036854775807".*;
+//         const max: [20]c_char = @as(*const [20]c_char, @ptrCast("9223372036854775807")).*;
 //     };
 //     _ = &static_local_max;
 //     const maxdigits: c_uint = @truncate(if (negative != 0) @as(usize, @sizeOf(@TypeOf(static_local_min.min))) else @as(usize, @sizeOf(@TypeOf(static_local_max.max))));

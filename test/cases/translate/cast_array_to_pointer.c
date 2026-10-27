@@ -13,8 +13,8 @@ void foo(void) {
 //     _ = &a;
 //     var x: [*c]c_int = @ptrCast(@alignCast(&a));
 //     _ = &x;
-//     var b: [6]u8 = undefined;
+//     var b: [6]c_char = undefined;
 //     _ = &b;
-//     var y: [*c]u8 = @ptrCast(@alignCast(&b));
+//     var y: [*c]c_char = @ptrCast(@alignCast(&b));
 //     _ = &y;
 // }

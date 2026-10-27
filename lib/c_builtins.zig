@@ -343,8 +343,8 @@ pub fn mul_overflow(a: anytype, b: anytype, result: *@TypeOf(a, b)) bool {
 ///
 /// If tagp contains any non-numeric characters, the function returns a NaN whose significand is zero.
 /// If tagp is empty, the function returns a NaN whose significand is zero.
-pub inline fn nanf(tagp: []const u8) f32 {
-    const parsed = std.fmt.parseUnsigned(c_ulong, tagp, 0) catch 0;
+pub inline fn nanf(tagp: anytype) f32 {
+    const parsed = std.fmt.parseUnsigned(c_ulong, @ptrCast(tagp), 0) catch 0;
     const bits: u23 = @truncate(parsed); // single-precision float trailing significand is 23 bits
     return @bitCast(@as(u32, bits) | @as(u32, @bitCast(std.math.nan(f32))));
 }
@@ -398,15 +398,15 @@ pub inline fn sqrt(val: f64) f64 {
     return @sqrt(val);
 }
 
-pub inline fn strcmp(s1: [*c]const u8, s2: [*c]const u8) c_int {
-    return switch (std.mem.orderZ(u8, s1, s2)) {
+pub inline fn strcmp(s1: anytype, s2: anytype) c_int {
+    return switch (std.mem.orderZ(@TypeOf(s1[0]), s1, s2)) {
         .lt => -1,
         .eq => 0,
         .gt => 1,
     };
 }
 
-pub inline fn strlen(s: [*c]const u8) usize {
+pub inline fn strlen(s: anytype) usize {
     return std.mem.sliceTo(s, 0).len;
 }
 

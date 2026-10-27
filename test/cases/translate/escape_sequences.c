@@ -1,5 +1,5 @@
-const char *escapes() {
-char a = '\'',
+const unsigned char *escapes() {
+    unsigned char a = '\'',
     b = '\\',
     c = '\a',
     d = '\b',
@@ -15,6 +15,7 @@ char a = '\'',
 
 
 // translate
+// target = x86_64-linux-musl
 //
 // pub export fn escapes() [*c]const u8 {
 //     var a: u8 = '\'';

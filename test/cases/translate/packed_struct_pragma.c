@@ -32,15 +32,15 @@ struct horch {
 // translate
 //
 // pub const struct_foo = extern struct {
-//     a: u8 align(1),
+//     a: c_char align(1),
 //     b: c_int align(1),
-//     c: u8,
+//     c: c_char,
 // };
 //
 // pub const foo = struct_foo;
 //
 // pub const struct_bar = extern struct {
-//     a: u8 align(2),
+//     a: c_char align(2),
 //     b: c_int align(2),
 //     c: c_longlong align(1),
 // };
@@ -48,7 +48,7 @@ struct horch {
 // pub const bar = struct_bar;
 //
 // pub const struct_baz = extern struct {
-//     a: u8 align(4),
+//     a: c_char align(4),
 //     b: f64 align(4),
 //     c: c_short,
 // };
@@ -56,9 +56,9 @@ struct horch {
 // pub const baz = struct_baz;
 //
 // pub const struct_horch = extern struct {
-//     a: u8,
+//     a: c_char,
 //     b: c_int,
-//     c: u8,
+//     c: c_char,
 // };
 //
 // pub const horch = struct_horch;

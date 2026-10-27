@@ -1,7 +1,7 @@
 struct foo {
     int x;
 };
-const char *struct_foo = "hello world";
+const unsigned char *struct_foo = "hello world";
 
 // translate
 //

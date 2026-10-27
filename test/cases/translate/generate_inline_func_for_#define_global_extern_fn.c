@@ -16,9 +16,9 @@ void (*epoxy_glDrawTextureNV)(float y0);
 //     return fn_ptr.?();
 // }
 //
-// pub extern var fn_ptr2: ?*const fn (c_int, f32) callconv(.c) u8;
+// pub extern var fn_ptr2: ?*const fn (c_int, f32) callconv(.c) c_char;
 //
-// pub inline fn bar(arg: c_int, arg_1: f32) u8 {
+// pub inline fn bar(arg: c_int, arg_1: f32) c_char {
 //     return fn_ptr2.?(arg, arg_1);
 // }
 // 

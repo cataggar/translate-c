@@ -12,6 +12,6 @@ void foo() {
 //     _ = &a;
 //     var b: S = undefined;
 //     _ = &b;
-//     var c: c_long = @divExact(@as(c_long, @bitCast(@intFromPtr(a) -% @intFromPtr(b))), @sizeOf(u8));
+//     var c: c_long = @divExact(@as(c_long, @bitCast(@intFromPtr(a) -% @intFromPtr(b))), @sizeOf(c_char));
 //     _ = &c;
 // }

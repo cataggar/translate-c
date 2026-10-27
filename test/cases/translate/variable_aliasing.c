@@ -12,18 +12,19 @@ void foo(char c) {
 }
 
 // translate
+// target = x86_64-linux-musl
 //
 // pub var a: c_long = 2;
 // pub var b: c_long = 2;
 // pub var c: c_int = 4;
-// pub export fn foo(arg_c_1: u8) void {
+// pub export fn foo(arg_c_1: c_char) void {
 //     var c_1 = arg_c_1;
 //     _ = &c_1;
 //     var a_2: c_int = undefined;
 //     _ = &a_2;
-//     var b_3: u8 = 123;
+//     var b_3: c_char = 123;
 //     _ = &b_3;
-//     b_3 = @bitCast(@as(i8, @truncate(a_2)));
+//     b_3 = @truncate(a_2);
 //     {
 //         var d: c_int = 5;
 //         _ = &d;

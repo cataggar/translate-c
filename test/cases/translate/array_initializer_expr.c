@@ -1,6 +1,6 @@
 static void foo(void){
-    char arr[10] ={1};
-    char *arr1[10] ={0};
+    unsigned char arr[10] ={1};
+    unsigned char *arr1[10] ={0};
     int arr2[5] = {0, [1] = 1, [3] = 3, 4};
     int arr3[6] = {0, [0] = 10, [2] = 2, [0] = 100, 4, 5};
     int arr4[7] = {[1] = 1, [2] = 2, [5] = 5};
@@ -8,12 +8,12 @@ static void foo(void){
     int arr6[9] = {};
 }
 struct S {
-    char label[8];
+    unsigned char label[8];
 } s = { .label = "start" };
 union U {
-    char label[8];
+    unsigned char label[8];
 } u = { .label = "start" };
-char a[2][8] = {"start"};
+unsigned char a[2][8] = {"start"};
 
 // translate
 //
@@ -54,13 +54,13 @@ char a[2][8] = {"start"};
 // }
 //
 // pub export var s: struct_S = struct_S{
-//     .label = "start"[0..5].* ++ @as([3]u8, @splat(0)),
+//     .label = "start".* ++ @as([3]u8, @splat(0)),
 // };
 //
 // pub export var u: union_U = union_U{
-//     .label = "start"[0..5].* ++ @as([3]u8, @splat(0)),
+//     .label = "start".* ++ @as([3]u8, @splat(0)),
 // };
 //
 // pub export var a: [2][8]u8 = [1][8]u8{
-//     "start"[0..5].* ++ @as([3]u8, @splat(0)),
+//     "start".* ++ @as([3]u8, @splat(0)),
 // } ++ @as([1][8]u8, @splat(__helpers.zeroes([8]u8)));
