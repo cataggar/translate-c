@@ -134,8 +134,7 @@ fn translate(
             try stdout.flush();
             return;
         } else if (mem.eql(u8, arg, "--version")) {
-            // TODO add version
-            try stdout.writeAll("0.0.0-dev\n");
+            try stdout.writeAll(build_options.version_str ++ "\n");
             try stdout.flush();
             return;
         } else if (mem.cutPrefix(u8, arg, "--libc=")) |rest| {

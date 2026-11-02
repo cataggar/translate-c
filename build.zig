@@ -12,6 +12,7 @@ pub fn build(b: *std.Build) void {
 
     const options = b.addOptions();
     options.addOption(bool, "debug_allocations", debug_allocations);
+    options.addOption([]const u8, "version_str", @import("build.zig.zon").version);
 
     const aro = b.dependency("aro", .{
         .target = target,

@@ -1,16 +1,16 @@
 .{
     .name = .translate_c,
 
-    .version = "0.0.0",
+    .version = "0.1.0-dev",
 
     .fingerprint = 0x1c84f6455a54f043, // Changing this has security and trust implications.
 
-    .minimum_zig_version = "0.18.0-dev.567+7f0281900",
+    .minimum_zig_version = "0.18.0-dev.828+9da287565",
 
     .dependencies = .{
         .aro = .{
-            .url = "git+https://codeberg.org/ziglang/arocc#95a5d889fd8e03f58722687ead85f6a09278c182",
-            .hash = "aro-0.0.0-JSD1QtdkOQAWPwBQDx-LugmB9nY29cc5so3BPZvsinDe",
+            .url = "git+https://codeberg.org/ziglang/arocc#b6d586e2f92eac6287d868ec64ed2532def94456",
+            .hash = "aro-0.1.0-dev-zsf-JSD1QtGzOQDa3rmu_DxPwIZUkRU9y3hELY-34kt0THt6",
         },
     },
 

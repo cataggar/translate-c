@@ -2414,6 +2414,9 @@ fn transExpr(t: *Translator, scope: *Scope, expr: Node.Index, used: ResultUsed) 
 
         .sizeof_expr => |sizeof| return t.transTypeInfo(scope, .sizeof, sizeof, used),
         .alignof_expr => |alignof| return t.transTypeInfo(scope, .alignof, alignof, used),
+        .countof_expr => |countof_expr| {
+            return t.fail(error.UnsupportedTranslation, countof_expr.op_tok, "TODO _Countof", .{});
+        },
 
         .imag_expr, .real_expr => |un| {
             return t.fail(error.UnsupportedTranslation, un.op_tok, "TODO complex numbers", .{});
@@ -4605,7 +4608,7 @@ pub fn parseNumber(t: *Translator, lit_bytes: []const u8) Error!struct { ZigNode
         .decimal => {},
     }
 
-    const after_prefix = lit_bytes[prefix.stringLen()..];
+    const after_prefix = lit_bytes[prefix.stringLen(lit_bytes)..];
     const prefix_len = bytes.items.len;
     const after_int = for (after_prefix, 0..) |c, i| switch (c) {
         '.' => {
